@@ -25,6 +25,9 @@ rcParams.update({
     'legend.fontsize': 14  # Legend font size
 })
 
+def add_one(number):
+    return number + 1
+
 def log_and_write(file: TextIO, message: str) -> None:
     """
     Helper function for logging and writing a message to a file.
