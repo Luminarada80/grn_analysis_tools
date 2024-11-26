@@ -3,7 +3,7 @@ import pandas as pd
 import math
 import scanpy as sc
 from typing import TextIO
-from sklearn.metrics import confusion_matrix, roc_curve, auc, roc_auc_score, precision_recall_curve
+from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve
 import matplotlib.pyplot as plt
 import numpy as np
 import re

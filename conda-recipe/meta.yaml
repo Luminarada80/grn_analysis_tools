@@ -1,0 +1,33 @@
+package:
+  name: grn_analysis_tools
+  version: 0.0.1
+
+source:
+  url: https://files.pythonhosted.org/packages/38/96/b5c6a3bbdbfa7585e26ea99fff3f65b0934b10e62495fdaaef3369c042dd/grn_analysis_tools-0.0.1.tar.gz
+  sha256: cdccbb72e3bff4d230546864bfee7cda5faf9a293b98900f130144592ebf4eef
+
+build:
+  noarch: python
+  number: 0
+  script: python -m pip install --no-deps --ignore-installed .
+
+requirements:
+  host:
+    - python >=3.10
+    - pip
+    - hatchling
+  run:
+    - python
+    - pandas >=2.0.3
+    - scanpy >=1.9.5
+    - matplotlib >=3.8.0
+    - numpy >=1.24.3
+
+about:
+  home: https://github.com/Luminarada80/grn_analysis_tools
+  license: MIT
+  description: |
+    A package with helper functions for analyzing gene regulatory network inference methods
+  dev_url: https://github.com/Luminarada80/grn_analysis_tools
+  doc_url: https://pypi.org/project/grn-analysis-tools/
+  doc_source_url: https://github.com/Luminarada80/grn_analysis_tools/blob/main/README.md
