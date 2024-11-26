@@ -33,8 +33,10 @@ jobs:
       # Step 4: Build the Conda Package
       - name: Build Conda Package
         run: |
-          conda run -n build-env conda-build conda-recipe
+          conda run -n build-env conda-build conda-recipe --channel conda-forge --no-cache-dir
+          # Dynamically find the path to the built .tar.bz2 package
           PACKAGE_PATH=$(find /usr/share/miniconda/conda-bld/ -name "*.tar.bz2")
+          echo "PACKAGE_PATH=$PACKAGE_PATH" >> $GITHUB_ENV
 
       # Step 5: Upload the Conda Package
       - name: Upload Conda Package
@@ -42,9 +44,9 @@ jobs:
           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
         run: |
           conda run -n build-env anaconda login --token $ANACONDA_API_TOKEN
-          conda run -n build-env anaconda upload $PACKAGE_PATH --force
+          conda run -n build-env anaconda upload ${{ env.PACKAGE_PATH }} --force
 
-      # Step 6: Install twine for PyPI
+      # Step 6: Install Twine for PyPI
       - name: Install Twine
         run: conda run -n build-env pip install twine
 
