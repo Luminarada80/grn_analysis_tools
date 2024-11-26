@@ -23,7 +23,7 @@ requirements:
   run:
     - python
     - pandas >=2.0.3
-    - scanpy >=1.9.5
+    - scanpy
     - matplotlib >=3.8.0
     - numpy >=1.24.3
 
