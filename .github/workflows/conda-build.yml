@@ -27,6 +27,7 @@ jobs:
       # Step 3: Create and Activate Custom Environment
       - name: Create Build Environment
         run: |
+          conda init
           conda create -n build-env -y python=3.9 conda-build anaconda-client pip
           conda activate build-env
 
