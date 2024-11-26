@@ -11,6 +11,10 @@ build:
   number: 0
   script: python -m pip install --no-deps --ignore-installed .
 
+channels:
+  - conda-forge
+  - defaults
+
 requirements:
   host:
     - python >=3.10
