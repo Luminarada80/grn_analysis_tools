@@ -33,7 +33,8 @@ jobs:
       env:
         ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
       run: |
-        ls ~/.conda/envs/base/conda-bld/
+        find ~/ -type d -name "conda-bld"
+
         conda run -n base anaconda upload ~/.conda/envs/base/conda-bld/noarch/grn_analysis_tools-*.tar.bz2
     
     - name: Install twine
