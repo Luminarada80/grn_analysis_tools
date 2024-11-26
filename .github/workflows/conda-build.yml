@@ -35,7 +35,7 @@ jobs:
       run: |
         find ~/ -type d -name "conda-bld"
 
-        conda run -n base anaconda upload ~/.conda/envs/base/conda-bld/noarch/grn_analysis_tools-*.tar.bz2
+        conda run -n base anaconda upload /usr/share/miniconda/conda-bld/noarch/grn_analysis_tools-*.tar.bz2
     
     - name: Install twine
       run: |
