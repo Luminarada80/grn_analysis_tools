@@ -33,7 +33,7 @@ jobs:
       env:
         ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
       run: |
-        anaconda upload ~/conda-bld/**/grn_analysis_tools-*.tar.bz2
+        conda run -n base anaconda upload ~/conda-bld/**/grn_analysis_tools-*.tar.bz2
     
     - name: Install twine
       run: |
@@ -43,5 +43,5 @@ jobs:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          python setup.py sdist bdist_wheel
-          twine upload dist/*
+          conda run -n base python setup.py sdist bdist_wheel
+          conda run -n base twine upload dist/*
