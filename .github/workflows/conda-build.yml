@@ -24,38 +24,31 @@ jobs:
           auto-update-conda: true
           python-version: 3.9
 
-      # Step 3: Create and Activate Custom Environment
+      # Step 3: Create Build Environment
       - name: Create Build Environment
-        run: |
-          conda init
-          conda create -n build-env -y python=3.9 conda-build anaconda-client pip
-          conda activate build-env
+        run: conda create -n build-env -y python=3.9 conda-build anaconda-client pip
 
-      # Step 4: Verify conda-build
-      - name: Verify conda-build
-        run: conda-build --version
-
-      # Step 5: Build the Conda Package
+      # Step 4: Build the Conda Package
       - name: Build Conda Package
-        run: conda-build conda-recipe
+        run: conda run -n build-env conda-build conda-recipe
 
-      # Step 6: Upload the Conda Package
+      # Step 5: Upload the Conda Package
       - name: Upload Conda Package
         env:
           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
         run: |
-          anaconda login --token $ANACONDA_API_TOKEN
-          anaconda upload /usr/share/miniconda/conda-bld/noarch/*.tar.bz2 --force
+          conda run -n build-env anaconda login --token $ANACONDA_API_TOKEN
+          conda run -n build-env anaconda upload /usr/share/miniconda/conda-bld/noarch/*.tar.bz2 --force
 
-      # Step 7: Install twine for PyPI
+      # Step 6: Install twine for PyPI
       - name: Install Twine
-        run: pip install twine
+        run: conda run -n build-env pip install twine
 
-      # Step 8: Publish to PyPI
+      # Step 7: Publish to PyPI
       - name: Publish to PyPI
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          python setup.py sdist bdist_wheel
-          twine upload dist/*
+          conda run -n build-env python setup.py sdist bdist_wheel
+          conda run -n build-env twine upload dist/*
