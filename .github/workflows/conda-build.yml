@@ -24,11 +24,10 @@ jobs:
           auto-update-conda: true
           python-version: 3.9
 
-      # Step 3: Create Build Environment
+      # Step 3: Install conda-build and anaconda-client
       - name: Create Build Environment
         run: |
-          conda create -n build-env -y python=3.9 conda-build anaconda-client pip
-          conda clean --all -y  # Clean up Conda environment to avoid conflicts
+          conda install conda-build anaconda-client pip
 
       # Step 4: Build the Conda Package
       - name: Build Conda Package
@@ -43,8 +42,8 @@ jobs:
         env:
           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
         run: |
-          conda run -n build-env anaconda login --token $ANACONDA_API_TOKEN
-          conda run -n build-env anaconda upload ${{ env.PACKAGE_PATH }} --force
+          anaconda login --token $ANACONDA_API_TOKEN
+          anaconda upload ${{ env.PACKAGE_PATH }} --force
 
       # Step 6: Install Twine for PyPI
       - name: Install Twine
