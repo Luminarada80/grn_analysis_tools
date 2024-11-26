@@ -16,7 +16,7 @@ jobs:
       uses: actions/checkout@v3
     # Set up Miniconda
     - name: Set up Miniconda
-      uses: conda-incubator/setup-miniconda@v2
+      uses: conda-incubator/setup-miniconda@v3
       with:
         auto-update-conda: true
         auto-activate-base: true
@@ -27,7 +27,7 @@ jobs:
     # Build the Conda package
     - name: Build the package
       run: |
-        conda-build conda-recipe
+        conda run -n base conda-build conda-recipe
     # Upload to Anaconda.org (Optional)
     - name: Upload package to Anaconda.org
       env:
