@@ -1,56 +1,44 @@
 name: Conda Build and Publish
-
 on:
   push:
     branches:
-      - main
+      - main  # Trigger on changes to the main branch
   pull_request:
     branches:
-      - main
-
+      - main  # Optional: Test on PRs to main branch
 jobs:
-  build-and-upload:
+  build-and-publish:
+    # GitHub actions uses virual machines to run workflows
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout the repository
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      # Step 2: Set up Miniconda
-      - name: Set up Miniconda
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          auto-update-conda: true
-          python-version: 3.9
-
-      # Step 3: Install conda-build and anaconda-client
-      - name: Create Build Environment
-        run: |
-          conda install conda-build anaconda-client pip
-
-      # Step 4: Build the Conda Package
-      - name: Build Conda Package
-        run: |
-          conda-build conda-recipe --channel conda-forge --no-cache-dir
-          # Dynamically find the path to the built .tar.bz2 package
-          PACKAGE_PATH=$(find /usr/share/miniconda/conda-bld/ -name "*.tar.bz2")
-          echo "PACKAGE_PATH=$PACKAGE_PATH" >> $GITHUB_ENV
-
-      # Step 5: Upload the Conda Package
-      - name: Upload Conda Package
-        env:
-          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
-        run: |
-          anaconda login --token $ANACONDA_API_TOKEN
-          anaconda upload ${{ env.PACKAGE_PATH }} --force
-
-      # Step 6: Install Twine for PyPI
-      - name: Install Twine
-        run: conda run -n build-env pip install twine
-
-      # Step 7: Publish to PyPI
-      - name: Publish to PyPI
+    # Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+    # Set up Miniconda
+    - name: Set up Miniconda
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        auto-update-conda: true
+        auto-activate-base: true
+    # Install dependencies for conda-build
+    - name: Install conda-build and anaconda-client
+      run: |
+        conda install -y conda-build anaconda-client
+    # Build the Conda package
+    - name: Build the package
+      run: |
+        conda-build conda-recipe
+    # Upload to Anaconda.org (Optional)
+    - name: Upload package to Anaconda.org
+      env:
+        ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
+      run: |
+        anaconda upload ~/conda-bld/**/grn_analysis_tools-*.tar.bz2
+    
+    - name: Install twine
+      run: |
+        pip install twine
+        - name: Publish to PyPI
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
