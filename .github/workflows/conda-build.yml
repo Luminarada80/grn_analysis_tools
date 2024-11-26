@@ -44,14 +44,16 @@ jobs:
         run: |
           anaconda login --token $ANACONDA_API_TOKEN
           anaconda upload /usr/share/miniconda/conda-bld/noarch/*.tar.bz2 --force
-          
-      - name: Install twine
+
+      # Step 7: Install twine for PyPI
+      - name: Install Twine
+        run: pip install twine
+
+      # Step 8: Publish to PyPI
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          pip install twine
-          - name: Publish to PyPI
-          env:
-            TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-            TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-          run: |
-            python setup.py sdist bdist_wheel
-            twine upload dist/*
+          python setup.py sdist bdist_wheel
+          twine upload dist/*
