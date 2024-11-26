@@ -24,9 +24,6 @@ rcParams.update({
     'legend.fontsize': 14  # Legend font size
 })
 
-def add_one(number):
-    return number + 1
-
 def log_and_write(file: TextIO, message: str) -> None:
     """
     Helper function for logging and writing a message to a file.
@@ -53,10 +50,12 @@ def source_target_cols_uppercase(df: pd.DataFrame) -> pd.DataFrame:
     df["Target"] = df["Target"].str.upper()
 
 def create_standard_dataframe(
-    inferred_network_df: pd.DataFrame,
+    network_df: pd.DataFrame,
     source_col: str = None,
     target_col: str = None,
-    score_col: str = None) -> pd.DataFrame:
+    score_col: str = None,
+    is_ground_truth: bool = False,
+    ) -> pd.DataFrame:
     
     """
     Standardizes inferred GRN dataframes to have three columns with "Source", "Target", and "Score".
@@ -64,8 +63,8 @@ def create_standard_dataframe(
     
     Parameters
     ----------
-        inferred_network_df (pd.dataframe):
-            Inferred GRN dataframe
+        network_df (pd.dataframe):
+            Inferred GRN dataframe or ground truth (if ground truth, set 'is_ground_truth' to True)
         
         source_col (str):
             The column name that should be used for the TFs. Default is "Source"
@@ -83,78 +82,77 @@ def create_standard_dataframe(
     """
     
     # Check to make sure the dataframe is input correctly
-    if inferred_network_df.empty:
+    if network_df.empty:
         raise ValueError("The input dataframe is empty. Please provide a valid dataframe.")
+    
+    # Create a copy of the network_df
+    network_df = network_df.copy()
 
     source_col = source_col.capitalize() if source_col else "Source"
     target_col = target_col.capitalize() if target_col else "Target"
     score_col = score_col.capitalize() if score_col else "Score"
-    
-    # Capitalize the column names for consistency
-    inferred_network_df.columns = inferred_network_df.columns.str.capitalize()
-        
-    # Detect if the DataFrame needs to be melted
-    if "Source" in inferred_network_df.columns and "Target" in inferred_network_df.columns:  
-        # Make sure that the gene names are all strings and dont include whitespace
-        inferred_network_df["Source"] = inferred_network_df["Source"].astype(str).str.strip()
-        inferred_network_df["Target"] = inferred_network_df["Target"].astype(str).str.strip()
-                              
-        # If no melting is required, we just rename columns directly
-        melted_df = inferred_network_df.rename(columns={source_col: "Source", target_col: "Target", score_col: "Score"})
-        
-        logging.info(f'{len(set(melted_df["Source"])):,} TFs, {len(set(melted_df["Target"])):,} TGs, and {len(melted_df["Score"]):,} edges')
 
+    # Detect if the DataFrame needs to be melted
+    if source_col in network_df.columns and target_col in network_df.columns:  
+        
+        # Assign default Score if missing and is_ground_truth=True
+        if score_col not in network_df.columns and is_ground_truth:
+            logging.info(f"Ground truth detected. Assigning default score of 0 to '{score_col}'.")
+            network_df[score_col] = 0
+            
+        elif score_col not in network_df.columns:
+            raise ValueError(f"Input dataframe must contain a '{score_col}' column unless 'is_ground_truth' is True.")
+        
+        # Rename and clean columns
+        standardized_df = network_df.rename(columns={source_col: "Source", target_col: "Target", score_col: "Score"})     
+        
     
     # The dataframe needs to be melted, there are more than 3 columns and no "Source" or "Target" columns
-    elif inferred_network_df.shape[1] > 3:
+    elif network_df.shape[1] > 3:
         
-        num_rows, num_cols = inferred_network_df.shape
+        num_rows, num_cols = network_df.shape
         
         logging.debug(f'Original dataframe has {num_rows} rows and {num_cols} columns')
         
         logging.debug(f'\nOld df before melting:')
-        logging.debug(inferred_network_df.head())
-        
+        logging.debug(network_df.head())     
         # TFs are columns, TGs are rows
         if num_rows >= num_cols:
             logging.info(f'\t{num_cols} TFs, {num_rows} TGs, and {num_cols * num_rows} edges')
             # Transpose the columns and rows to prepare for melting
-            inferred_network_df = inferred_network_df.T
+            network_df = network_df.T
             
             # Reset the index to make the TFs a column named 'Source'
-            inferred_network_df = inferred_network_df.reset_index()
-            inferred_network_df = inferred_network_df.rename(columns={'index': 'Source'})  # Rename the index column to 'Source'
+            network_df = network_df.reset_index()
+            network_df = network_df.rename(columns={'index': 'Source'})  # Rename the index column to 'Source'
     
-            melted_df = inferred_network_df.melt(id_vars="Source", var_name="Target", value_name="Score")
+            standardized_df = network_df.melt(id_vars="Source", var_name="Target", value_name="Score")
             
         # TFs are rows, TGs are columns
         elif num_cols > num_rows:
             logging.info(f'\t{num_rows} TFs, {num_cols} TGs, and {num_cols * num_rows} edges')
             
             # Reset the index to make the TFs a column named 'Source'
-            inferred_network_df = inferred_network_df.reset_index()
-            inferred_network_df = inferred_network_df.rename(columns={'index': 'Source'})  # Rename the index column to 'Source'
+            network_df = network_df.reset_index()
+            network_df = network_df.rename(columns={'index': 'Source'})  # Rename the index column to 'Source'
     
-            melted_df = inferred_network_df.melt(id_vars="Source", var_name="Target", value_name="Score")
+            standardized_df = network_df.melt(id_vars="Source", var_name="Target", value_name="Score")
 
-    # Capitalize and strip whitespace for consistency
-    source_target_cols_uppercase(melted_df)
+    else:
+        raise ValueError("Input dataframe must either be in long format with 'Source' and 'Target' columns, "
+                         "or matrix format with row and column names representing TGs and TFs.")
 
-    # Select and order columns as per new standard
-    standardized_df = melted_df[["Source", "Target", "Score"]]
-    
-    # # Remove any infinite and NaN values from the Score column
-    # standardized_df = standardized_df.replace([np.inf, -np.inf], np.nan)
-    # standardized_df = standardized_df.dropna(subset=["Score"])
-    
-    logging.debug(f'\nNew df after standardizing:')
-    logging.debug(standardized_df.head())
+
+    # Final check to make sure the dataframe has the correct targets
+    standardized_df = standardized_df[["Source", "Target", "Score"]]
     
     # Validates the structure of the dataframe before returning it
-    assert all(col in standardized_df.columns for col in ["Source", "Target", "Score"]), \
-    "Standardized dataframe does not contain the required columns."
+    if not all(col in standardized_df.columns for col in ["Source", "Target", "Score"]):
+        raise ValueError("Standardized dataframe does not contain the required columns.")
     
+    logging.info(f"Standardized dataframe created with {len(standardized_df):,} edges.")
     return standardized_df
+
 
 def add_inferred_scores_to_ground_truth(
     ground_truth_df: pd.DataFrame,
