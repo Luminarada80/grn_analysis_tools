@@ -3,10 +3,10 @@ name: Conda Build and Publish
 on:
   push:
     branches:
-      - main  # Trigger on changes to the main branch
+      - main
   pull_request:
     branches:
-      - main  # Optional: Test on PRs to main branch
+      - main
 
 jobs:
   build-and-upload:
@@ -23,11 +23,12 @@ jobs:
         with:
           auto-update-conda: true
           python-version: 3.9
-          activate-environment: base
 
-      # Step 3: Install conda-build
-      - name: Install conda-build
-        run: conda install -y conda-build
+      # Step 3: Create and Activate Custom Environment
+      - name: Create Build Environment
+        run: |
+          conda create -n build-env -y python=3.9 conda-build anaconda-client pip
+          conda activate build-env
 
       # Step 4: Verify conda-build
       - name: Verify conda-build
