@@ -32,7 +32,7 @@ jobs:
       # Step 4: Build the Conda Package
       - name: Build Conda Package
         run: |
-          conda run -n build-env conda-build conda-recipe --channel conda-forge --no-cache-dir
+          conda-build conda-recipe --channel conda-forge --no-cache-dir
           # Dynamically find the path to the built .tar.bz2 package
           PACKAGE_PATH=$(find /usr/share/miniconda/conda-bld/ -name "*.tar.bz2")
           echo "PACKAGE_PATH=$PACKAGE_PATH" >> $GITHUB_ENV
@@ -55,5 +55,5 @@ jobs:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          conda run -n build-env python setup.py sdist bdist_wheel
-          conda run -n build-env twine upload dist/*
+          python setup.py sdist bdist_wheel
+          twine upload dist/*
