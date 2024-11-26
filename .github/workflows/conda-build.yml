@@ -16,26 +16,29 @@ jobs:
       # Step 1: Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
+      
+      - name: Build Conda
+        uses: cascode-labs/build-conda-action@v0.1.4
 
-      # Step 2: Set up Miniconda
-      - name: Set up Miniconda
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          auto-update-conda: true
-          python-version: 3.9
+      # # Step 2: Set up Miniconda
+      # - name: Set up Miniconda
+      #   uses: conda-incubator/setup-miniconda@v2
+      #   with:
+      #     auto-update-conda: true
+      #     python-version: 3.9
 
-      # Step 3: Install conda-build and anaconda-client
-      - name: Create Build Environment
-        run: |
-          conda install conda-build anaconda-client pip
+      # # Step 3: Install conda-build and anaconda-client
+      # - name: Create Build Environment
+      #   run: |
+      #     conda install conda-build anaconda-client pip
 
-      # Step 4: Build the Conda Package
-      - name: Build Conda Package
-        run: |
-          conda-build conda-recipe --channel conda-forge --no-cache-dir
-          # Dynamically find the path to the built .tar.bz2 package
-          PACKAGE_PATH=$(find /usr/share/miniconda/conda-bld/ -name "*.tar.bz2")
-          echo "PACKAGE_PATH=$PACKAGE_PATH" >> $GITHUB_ENV
+      # # Step 4: Build the Conda Package
+      # - name: Build Conda Package
+      #   run: |
+      #     conda-build conda-recipe --channel conda-forge --no-cache-dir
+      #     # Dynamically find the path to the built .tar.bz2 package
+      #     PACKAGE_PATH=$(find /usr/share/miniconda/conda-bld/ -name "*.tar.bz2")
+      #     echo "PACKAGE_PATH=$PACKAGE_PATH" >> $GITHUB_ENV
 
       # Step 5: Upload the Conda Package
       - name: Upload Conda Package
