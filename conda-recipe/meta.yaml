@@ -26,6 +26,7 @@ requirements:
     - matplotlib >=3.8.0
     - numpy >=1.24.3
     - scikit-learn
+    - scanpy
 
 about:
   home: https://github.com/Luminarada80/grn_analysis_tools

@@ -3,6 +3,7 @@ import pandas as pd
 import math
 from typing import TextIO
 from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve
+import scanpy as sc
 import matplotlib.pyplot as plt
 import numpy as np
 import re
@@ -485,64 +486,64 @@ def plot_multiple_histogram_with_thresholds(
     plt.savefig(f'{save_path}.png', dpi=200)
     plt.close()
 
-# def plot_cell_expression_histogram(
-#     adata_rna: sc.AnnData, 
-#     output_dir: str, 
-#     cell_type: str = None,
-#     ymin: int | float = 0,
-#     ymax: int | float = 100,
-#     xmin: int | float = 0,
-#     xmax: int | float = None,
-#     filename: str = 'avg_gene_expr_hist',
-#     filetype: str = 'png'
+def plot_cell_expression_histogram(
+    adata_rna: sc.AnnData, 
+    output_dir: str, 
+    cell_type: str = None,
+    ymin: int | float = 0,
+    ymax: int | float = 100,
+    xmin: int | float = 0,
+    xmax: int | float = None,
+    filename: str = 'avg_gene_expr_hist',
+    filetype: str = 'png'
     
-#     ):
-#     """
-#     Plots a histogram showing the distribution of cell gene expression by percent of the population.
+    ):
+    """
+    Plots a histogram showing the distribution of cell gene expression by percent of the population.
     
-#     Assumes the data has cells as columns and genes as rows
+    Assumes the data has cells as columns and genes as rows
 
-#     Parameters
-#     ----------
-#         adata_rna (sc.AnnData):
-#             scRNAseq dataset with cells as columns and genes as rows
-#         output_dir (str):
-#             Directory to save the graph in
-#         cell_type (str):
-#             Can specify the cell type if the dataset is a single cell type
-#         ymin (int | float):
-#             The minimum y-axis value (in percentage, default = 0)
-#         ymax (int | float):
-#             The maximum y-axis value (in percentage, default = 100)
-#         xmin (int | float):
-#             The minimum x-axis value (default = 0)
-#         xmax (int | float):
-#             The maximum x-axis value
-#         filename (str):
-#             The name of the file to save the figure as
-#         filetype (str):
-#             The file extension of the figure (default = png)
-#     """        
+    Parameters
+    ----------
+        adata_rna (sc.AnnData):
+            scRNAseq dataset with cells as columns and genes as rows
+        output_dir (str):
+            Directory to save the graph in
+        cell_type (str):
+            Can specify the cell type if the dataset is a single cell type
+        ymin (int | float):
+            The minimum y-axis value (in percentage, default = 0)
+        ymax (int | float):
+            The maximum y-axis value (in percentage, default = 100)
+        xmin (int | float):
+            The minimum x-axis value (default = 0)
+        xmax (int | float):
+            The maximum x-axis value
+        filename (str):
+            The name of the file to save the figure as
+        filetype (str):
+            The file extension of the figure (default = png)
+    """        
     
-#     n_cells = adata_rna.shape[0]
-#     n_genes = adata_rna.shape[1]
+    n_cells = adata_rna.shape[0]
+    n_genes = adata_rna.shape[1]
     
-#     # Create the histogram and calculate bin heights
-#     plt.hist(adata_rna.obs["n_genes"], bins=30, edgecolor='black', weights=np.ones_like(adata_rna.obs["n_genes"]) / n_cells * 100)
+    # Create the histogram and calculate bin heights
+    plt.hist(adata_rna.obs["n_genes"], bins=30, edgecolor='black', weights=np.ones_like(adata_rna.obs["n_genes"]) / n_cells * 100)
     
-#     if cell_type == None:
-#         plt.title(f'Distribution of the number of genes expressed by cells in the dataset')
-#     else: 
-#         plt.title(f'Distribution of the number of genes expressed by {cell_type}s in the dataset')
+    if cell_type == None:
+        plt.title(f'Distribution of the number of genes expressed by cells in the dataset')
+    else: 
+        plt.title(f'Distribution of the number of genes expressed by {cell_type}s in the dataset')
         
-#     plt.xlabel(f'Number of genes expressed ({n_genes} total genes)')
-#     plt.ylabel(f'Percentage of cells ({n_cells} total cells)')
+    plt.xlabel(f'Number of genes expressed ({n_genes} total genes)')
+    plt.ylabel(f'Percentage of cells ({n_cells} total cells)')
     
-#     plt.yticks(np.arange(0, min(ymax, 100) + 1, 5), [f'{i}%' for i in range(0, min(ymax, 100) + 1, 5)])
-#     plt.ylabel(f'Percentage of cells ({n_cells} total cells)')
+    plt.yticks(np.arange(0, min(ymax, 100) + 1, 5), [f'{i}%' for i in range(0, min(ymax, 100) + 1, 5)])
+    plt.ylabel(f'Percentage of cells ({n_cells} total cells)')
     
-#     plt.savefig(f'{output_dir}/{filename}.{filetype}', dpi=300)
-#     plt.close()
+    plt.savefig(f'{output_dir}/{filename}.{filetype}', dpi=300)
+    plt.close()
     
 def create_randomized_inference_scores(    
     ground_truth_df: pd.DataFrame,
@@ -697,6 +698,8 @@ def calculate_and_plot_auroc_auprc(
     fig.tight_layout()
     plt.savefig(save_path, dpi=200)
     plt.close()
+    
+    return roc_auc, prc_auc
 
 def parse_wall_clock_time(line):
     # Extract the time part after the last mention of 'time'
@@ -757,7 +760,7 @@ def parse_time_module_output(log_dir: str, sample_list: str):
                     }
 
                     # Extract each relevant resource statistic for the sample step and save it in a dictionary
-                    with open(f'{LOG_DIR}/{sample_log_dir}/{file}', 'r') as log_file:
+                    with open(f'{log_dir}/{sample_log_dir}/{file}', 'r') as log_file:
                         for line in log_file:
                             if 'User time' in line:
                                 sample_resource_dict[sample_log_dir][pipeline_step]["user_time"] = float(line.split(":")[-1])
