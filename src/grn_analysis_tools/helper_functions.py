@@ -11,7 +11,7 @@ import os
 from matplotlib import rcParams
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(message)s')   
+logging.basicConfig(level=logging.debug, format='%(message)s')   
 
 # Set font to Arial and adjust font sizes
 rcParams.update({
@@ -32,7 +32,7 @@ def log_and_write(file: TextIO, message: str) -> None:
         file (TextIO): An open file object where the message will be written.
         message (str): The message to be logged and written to the file.
     """
-    logging.info(message)
+    logging.debug(message)
     file.write(message + '\n')
 
 def source_target_cols_uppercase(df: pd.DataFrame) -> pd.DataFrame:
@@ -97,7 +97,7 @@ def create_standard_dataframe(
         
         # Assign default Score if missing and is_ground_truth=True
         if score_col not in network_df.columns and is_ground_truth:
-            logging.info(f"Ground truth detected. Assigning default score of 0 to '{score_col}'.")
+            logging.debug(f"Ground truth detected. Assigning default score of 0 to '{score_col}'.")
             network_df[score_col] = 0
             
         elif score_col not in network_df.columns:
@@ -118,7 +118,7 @@ def create_standard_dataframe(
         logging.debug(network_df.head())     
         # TFs are columns, TGs are rows
         if num_rows >= num_cols:
-            logging.info(f'\t{num_cols} TFs, {num_rows} TGs, and {num_cols * num_rows} edges')
+            logging.debug(f'\t{num_cols} TFs, {num_rows} TGs, and {num_cols * num_rows} edges')
             # Transpose the columns and rows to prepare for melting
             network_df = network_df.T
             
@@ -130,7 +130,7 @@ def create_standard_dataframe(
             
         # TFs are rows, TGs are columns
         elif num_cols > num_rows:
-            logging.info(f'\t{num_rows} TFs, {num_cols} TGs, and {num_cols * num_rows} edges')
+            logging.debug(f'\t{num_rows} TFs, {num_cols} TGs, and {num_cols * num_rows} edges')
             
             # Reset the index to make the TFs a column named 'Source'
             network_df = network_df.reset_index()
@@ -150,7 +150,7 @@ def create_standard_dataframe(
     if not all(col in standardized_df.columns for col in ["Source", "Target", "Score"]):
         raise ValueError("Standardized dataframe does not contain the required columns.")
     
-    logging.info(f"Standardized dataframe created with {len(standardized_df):,} edges.")
+    logging.debug(f"Standardized dataframe created with {len(standardized_df):,} edges.")
     return standardized_df
 
 
@@ -422,7 +422,7 @@ def plot_multiple_histogram_with_thresholds(
     num_cols = min(num_methods, max_cols)  # Up to 4 columns
     num_rows = math.ceil(num_methods / max_cols)  # Rows needed to fit all methods
 
-    # print(f"Number of rows: {num_rows}, Number of columns: {num_cols}")
+    # logging.debug(f"Number of rows: {num_rows}, Number of columns: {num_cols}")
     
     plt.figure(figsize=(18, 8))
 
@@ -454,6 +454,11 @@ def plot_multiple_histogram_with_thresholds(
         # Define consistent bin edges for the entire dataset based on the number of values
         num_bins = 200
         all_scores = np.concatenate([tp, fn, fp, tn])
+        
+        # Ensure that concatenating all scores creates a non-empty array
+        if len(all_scores) == 0:
+            raise ValueError("The combined scores array is empty, cannot generate histogram with thresholds.")
+        
         bin_edges = np.linspace(np.min(all_scores), np.max(all_scores), num_bins)
         # bin_edges = np.sort(np.unique(np.append(bin_edges, lower_threshold)))
         
@@ -594,6 +599,17 @@ def create_randomized_inference_scores(
     inferred_network_df_copy = inferred_network_df.copy()
     ground_truth_df_copy = ground_truth_df.copy()
     
+    # Drop any columns that end up being infinity or nan values
+    ground_truth_df_copy["Score"] = ground_truth_df_copy["Score"].replace([np.inf, -np.inf], np.nan).dropna()
+    inferred_network_df_copy["Score"] = inferred_network_df_copy["Score"].replace([np.inf, -np.inf], np.nan).dropna()
+    
+    # Ensure there are still scores after filtering
+    if ground_truth_df_copy["Score"].empty:
+        raise ValueError("Ground truth scores are empty after cleaning.")
+    
+    if inferred_network_df_copy["Score"].empty:
+        raise ValueError("Inferred network scores are empty after cleaning.")
+    
     # Extract the Score for each edge
     inferred_network_score = inferred_network_df_copy["Score"]
     ground_truth_score = ground_truth_df_copy["Score"]
@@ -616,6 +632,10 @@ def create_randomized_inference_scores(
         randomized_ground_truth_mean = ground_truth_df_copy["Score"].mean()
         randomized_ground_truth_stdev = ground_truth_df_copy["Score"].std()
         
+        # Make sure that the mean and standard deviation are not nan
+        if np.isnan(randomized_ground_truth_mean) or np.isnan(randomized_ground_truth_stdev):
+            raise ValueError("Mean or standard deviation of ground truth scores is NaN.")
+        
         # Default lower threshold is 1 stdev below the ground truth mean
         lower_threshold = randomized_ground_truth_mean - 1 * randomized_ground_truth_stdev
     
@@ -631,7 +651,8 @@ def create_randomized_inference_scores(
     randomized_ground_truth_dict = {'Randomized': ground_truth_df_copy}
     
     if histogram_save_path != None:
-        print(f'\tSaving histogram of randomized GRN scores')
+        
+        logging.debug(f'\tSaving histogram of randomized GRN scores')
         plot_multiple_histogram_with_thresholds(randomized_ground_truth_dict, randomized_inferred_dict, histogram_save_path)
     
     return randomized_accuracy_metric_dict, randomized_confusion_matrix_dict
@@ -646,7 +667,7 @@ def calculate_and_plot_auroc_auprc(
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))    
     
     for method, score_dict in confusion_matrix_score_dict.items():
-        print(f'\tGenerating AUROC and AUPRC for {method}')
+        logging.debug(f'\tGenerating AUROC and AUPRC for {method}')
         y_true = score_dict['y_true']
         y_scores = score_dict['y_scores']
         
@@ -714,7 +735,7 @@ def parse_time_module_output(log_dir: str, sample_list: str):
     ]
 
     for sample_log_dir in os.listdir(log_dir):
-        print(f'Analyzing {sample_log_dir}')
+        logging.debug(f'Analyzing {sample_log_dir}')
         
         # Find each sample in the LOGS directory
         if sample_log_dir in sample_list:
@@ -725,7 +746,7 @@ def parse_time_module_output(log_dir: str, sample_list: str):
             for file in os.listdir(f'{log_dir}/{sample_log_dir}'):
                 
                 if file.endswith(".log"):
-                    print(file)
+                    logging.debug(file)
                     pipeline_step = file.split(".")[0]
                     sample_resource_dict[sample_log_dir][pipeline_step] = {
                         "user_time": 0,
