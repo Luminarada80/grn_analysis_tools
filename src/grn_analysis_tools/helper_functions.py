@@ -667,6 +667,8 @@ def calculate_and_plot_auroc_auprc(
     # Define figure and subplots for combined AUROC and AUPRC plots
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))    
     
+    auc_dict = {}
+    
     for method, score_dict in confusion_matrix_score_dict.items():
         logging.debug(f'\tGenerating AUROC and AUPRC for {method}')
         y_true = score_dict['y_true']
@@ -676,6 +678,10 @@ def calculate_and_plot_auroc_auprc(
         precision, recall, _ = precision_recall_curve(y_true, y_scores)
         roc_auc = auc(fpr, tpr)
         prc_auc = auc(recall, precision)
+        
+        auc_dict[method]  = {}
+        auc_dict[method]["auroc"] = roc_auc
+        auc_dict[method]["auprc"] = prc_auc
         
         axes[0].plot(fpr, tpr, label=f'{method} AUROC = {roc_auc:.2f}')
         axes[0].plot([0, 1], [0, 1], 'k--')  # Diagonal line for random performance
@@ -699,7 +705,7 @@ def calculate_and_plot_auroc_auprc(
     plt.savefig(save_path, dpi=200)
     plt.close()
     
-    return roc_auc, prc_auc
+    return auc_dict
 
 def parse_wall_clock_time(line):
     # Extract the time part after the last mention of 'time'
