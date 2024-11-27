@@ -38,10 +38,10 @@ jobs:
     - name: Install twine
       run: |
         pip install twine
+
     - name: Publish to PyPI
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        conda run -n base python setup.py sdist bdist_wheel
-        conda run -n base twine upload dist/*
+        conda run -n base twine upload --skip-existing dist/*
