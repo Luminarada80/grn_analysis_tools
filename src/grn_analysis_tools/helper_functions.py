@@ -11,7 +11,7 @@ import os
 from matplotlib import rcParams
 
 # Configure logging
-logging.basicConfig(level=logging.debug, format='%(message)s')   
+logging.basicConfig(level=logging.INFO, format='%(message)s')   
 
 # Set font to Arial and adjust font sizes
 rcParams.update({
