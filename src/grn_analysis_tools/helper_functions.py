@@ -154,7 +154,6 @@ def create_standard_dataframe(
     logging.debug(f"Standardized dataframe created with {len(standardized_df):,} edges.")
     return standardized_df
 
-
 def add_inferred_scores_to_ground_truth(
     ground_truth_df: pd.DataFrame,
     inferred_network_df: pd.DataFrame,
@@ -253,7 +252,7 @@ def remove_tf_tg_not_in_ground_truth(
     ) -> pd.DataFrame:
     
     """
-    Removes edges from the inferred network whether either the "Source" or "Target" gene is not
+    Removes TFs and TGs from the inferred network where either the "Source" or "Target" gene is not
     found in the ground truth network.
     
     This allows for the evaluation of the GRN inference method by removing TFs and TGs that could
@@ -292,10 +291,106 @@ def remove_tf_tg_not_in_ground_truth(
     
     return aligned_inferred_network
 
+def classify_interactions_by_threshold(ground_truth_df: pd.DataFrame, inferred_network_df: pd.DataFrame, lower_threshold: int | float = None):
+    """
+    Adds the columns 'true_interaction' and 'predicted_interaction' to the ground truth and inferred network dataframes.
+    
+    For ground truth edges, the true interaction is set to 1. The predicted interactions are set to 1 for edge scores 
+    above the lower threshold (predicted positive) and 0 for edge scores below the lower threshold (predicted negative). 
+    
+    For inferred network edges not in the ground truth, the true interaction is set to 0. The predicted interactions are
+    set to 1 for edge scores above the lower threshold (predicted positive) and 0 for edge scores below the lower 
+    threshold (predicted negative).
+
+    Parameters
+    ----------
+        ground_truth_df (pd.DataFrame): 
+            This DataFrame contains the ground truth network in standard "Source" "Target" "Score" format.
+        inferred_network_df (pd.DataFrame): 
+            This DataFrame contains the inferred GRN network in standard "Source" "Target" "Score" format, with ground truth
+            edges removed and genes not found in the ground truth network removed.
+        lower_threshold (int | float, optional): 
+            Optional threshold of ground truth scores used classify inferred GRN edge scores as True or False. Defaults
+            to one standard deviation below the mean of the ground truth score distribution.
+
+    Returns
+    ----------
+        ground_truth_df_copy (pd.DataFrame): 
+            Ground truth network in standard "Source" "Target" "Score" format with added columns "true_interaction" and 
+            "predicted_interaction".
+            
+        inferred_network_df_copy (pd.DataFrame):
+            Inferred network in standard "Source" "Target" "Score" format with added columns "true_interaction" and 
+            "predicted_interaction".
+    """
+    
+    required_columns = ["Source", "Target", "Score"]
+    missing_columns_ground_truth = set(required_columns) - set(ground_truth_df.columns)
+    if missing_columns_ground_truth:
+        raise ValueError(f"Missing required columns in ground_truth_df: {missing_columns_ground_truth}. Columns present: \
+            {list(ground_truth_df.columns)}")
+    
+    missing_columns_inferred = set(required_columns) - set(inferred_network_df.columns)
+    if missing_columns_inferred:
+        raise ValueError(f"Missing required columns in ground_truth_df: {missing_columns_inferred}. Columns present: \
+            {list(inferred_network_df.columns)}")
+    
+    # Ensure that the "Score" column exists in both the ground truth and inferred networks
+    if ground_truth_df["Score"].isna().all():
+        raise ValueError("Ground truth scores are empty. Please make sure that you have used \
+            'add_inferred_scores_to_ground_truth', remove_ground_truth_edges_from_inferred', \
+            and 'remove_tf_tg_not_in_ground_truth' to prepare the dataset")
+    
+    if inferred_network_df["Score"].isna().all():
+        raise ValueError("Inferred network scores are empty. Ensure there is overlap between \
+            the TFs and TGs in the ground truth and inferred networks")
+    
+    overlap = pd.merge(inferred_network_df, ground_truth_df, on=['Source', 'Target'])
+    if not overlap.empty:
+        logging.warning(f"{len(overlap)} overlapping edges detected between the inferred network \
+            and ground truth. Removing these edges.")
+        
+        # Remove any overlapping ground truth edges from the inferred network
+        inferred_network_df = remove_ground_truth_edges_from_inferred(ground_truth_df, inferred_network_df)
+        
+        # Remove any TFs and TGs not found in the ground truth from the inferred network
+        inferred_network_df = remove_tf_tg_not_in_ground_truth(ground_truth_df, inferred_network_df)
+        
+    
+    ground_truth_df_copy = ground_truth_df.copy()
+    inferred_network_df_copy = inferred_network_df.copy()
+    
+    if lower_threshold == None:
+        gt_mean = ground_truth_df['Score'].mean()
+        gt_std = ground_truth_df['Score'].std()
+
+        # Define the lower threshold
+        lower_threshold = gt_mean - 1 * gt_std
+    
+    # Classify ground truth Score
+    ground_truth_df_copy['true_interaction'] = 1
+    ground_truth_df_copy['predicted_interaction'] = np.where(
+        ground_truth_df_copy['Score'] >= lower_threshold, 1, 0)
+    
+    if ground_truth_df_copy['predicted_interaction'].empty:
+        logging.warning("There are no predicted interactions for the ground truth network with the \
+            given lower_threshold")
+
+    # Classify non-ground truth Score (trans_reg_minus_ground_truth_df)
+    inferred_network_df_copy['true_interaction'] = 0
+    inferred_network_df_copy['predicted_interaction'] = np.where(
+        inferred_network_df_copy['Score'] >= lower_threshold, 1, 0)
+
+    if inferred_network_df_copy['predicted_interaction'].empty:
+        logging.warning("There are no predicted interactions for the inferred network with the \
+            given lower_threshold")
+    
+    return ground_truth_df_copy, inferred_network_df_copy
+    
+
 def calculate_accuracy_metrics(
     ground_truth_df: pd.DataFrame,
     inferred_network_df: pd.DataFrame,
-    lower_threshold: int = None,
     num_edges_for_early_precision: int = 1000,
     ) -> tuple[dict, dict]:
     
@@ -328,23 +423,28 @@ def calculate_accuracy_metrics(
             A dictionary of the accuracy metrics and their values
 
     """
-        
-    if lower_threshold == None:
-        gt_mean = ground_truth_df['Score'].mean()
-        gt_std = ground_truth_df['Score'].std()
-
-        # Define the lower threshold
-        lower_threshold = gt_mean - 1 * gt_std
     
-    # Classify ground truth Score
-    ground_truth_df['true_interaction'] = 1
-    ground_truth_df['predicted_interaction'] = np.where(
-        ground_truth_df['Score'] >= lower_threshold, 1, 0)
+    required_columns = ["Source", "Target", "Score", "true_interaction", "predicted_interaction"]
+    
+    # Check to make sure the ground truth dataset has the required columns
+    missing_columns_ground_truth = set(required_columns) - set(ground_truth_df.columns)
+    if missing_columns_ground_truth:
+        raise ValueError(f"Missing required columns in ground_truth_df: {missing_columns_ground_truth}. Columns present: \
+            {list(ground_truth_df.columns)}")
+    
+    # Check to make sure the inferred network has the required columns
+    missing_columns_inferred = set(required_columns) - set(inferred_network_df.columns)
+    if missing_columns_inferred:
+        raise ValueError(f"Missing required columns in inferred_network_df: {missing_columns_inferred}. Columns present: \
+            {list(inferred_network_df.columns)}")
 
-    # Classify non-ground truth Score (trans_reg_minus_ground_truth_df)
-    inferred_network_df['true_interaction'] = 0
-    inferred_network_df['predicted_interaction'] = np.where(
-        inferred_network_df['Score'] >= lower_threshold, 1, 0)
+    
+    # Ensure that the "Score" column exists in both the ground truth and inferred networks
+    for col in ["true_interaction", "predicted_interaction"]:
+        if ground_truth_df[col].isna().all():
+            raise ValueError(f"Ground truth {col} column is completely missing (all NaN). Ensure it is created properly.")
+        if inferred_network_df[col].isna().all():
+            raise ValueError(f"Inferred network {col} column is completely missing (all NaN). Ensure it is created properly.")
 
     # Concatenate dataframes for AUC and further analysis
     auc_df = pd.concat([ground_truth_df, inferred_network_df])
