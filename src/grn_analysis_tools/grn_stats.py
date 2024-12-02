@@ -311,7 +311,7 @@ def create_randomized_inference_scores(
         lower_threshold = randomized_ground_truth_mean - 1 * randomized_ground_truth_stdev
     
     # Calculate the true and predicted interactions with the randomized lower threshold
-    ground_truth_df_copy, inferred_network_df_copy = grn_formatting.classify_interactions_by_threshold(ground_truth_df_copy, inferred_network_df_copy, lower_threshold)
+    ground_truth_df_copy, inferred_network_df_copy = classify_interactions_by_threshold(ground_truth_df_copy, inferred_network_df_copy, lower_threshold)
     
     # Recalculate the accuracy metrics for the resampled Score
     randomized_accuracy_metric_dict, randomized_confusion_matrix_dict = calculate_accuracy_metrics(
