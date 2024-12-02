@@ -86,9 +86,9 @@ def create_standard_dataframe(
     # Create a copy of the network_df
     network_df = network_df.copy()
 
-    source_col = source_col.capitalize() if source_col else "Source"
-    target_col = target_col.capitalize() if target_col else "Target"
-    score_col = score_col.capitalize() if score_col else "Score"
+    source_col = source_col if source_col else "Source"
+    target_col = target_col if target_col else "Target"
+    score_col = score_col if score_col else "Score"
 
     # Detect if the DataFrame needs to be melted
     if source_col in network_df.columns and target_col in network_df.columns:  
