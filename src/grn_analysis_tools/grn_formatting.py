@@ -89,10 +89,9 @@ def create_standard_dataframe(
     source_col = source_col if source_col else "Source"
     target_col = target_col if target_col else "Target"
     score_col = score_col if score_col else "Score"
-
+    
     # Detect if the DataFrame needs to be melted
     if source_col in network_df.columns and target_col in network_df.columns:  
-        
         # Assign default Score if missing and is_ground_truth=True
         if score_col not in network_df.columns and is_ground_truth:
             logging.debug(f"Ground truth detected. Assigning default score of 0 to '{score_col}'.")
@@ -108,12 +107,7 @@ def create_standard_dataframe(
     # The dataframe needs to be melted, there are more than 3 columns and no "Source" or "Target" columns
     elif network_df.shape[1] > 3:
         
-        num_rows, num_cols = network_df.shape
-        
-        logging.debug(f'Original dataframe has {num_rows} rows and {num_cols} columns')
-        
-        logging.debug(f'\nOld df before melting:')
-        logging.debug(network_df.head())     
+        num_rows, num_cols = network_df.shape   
         # TFs are columns, TGs are rows
         if num_rows >= num_cols:
             logging.debug(f'\t{num_cols} TFs, {num_rows} TGs, and {num_cols * num_rows} edges')
@@ -135,6 +129,10 @@ def create_standard_dataframe(
             network_df = network_df.rename(columns={'index': 'Source'})  # Rename the index column to 'Source'
     
             standardized_df = network_df.melt(id_vars="Source", var_name="Target", value_name="Score")
+        
+        else:
+            raise ValueError("Error in parsing the network shape, check 'source_col', 'target_col', and "
+                             "'score_col' names.")
 
     else:
         raise ValueError("Input dataframe must either be in long format with 'Source' and 'Target' columns, "

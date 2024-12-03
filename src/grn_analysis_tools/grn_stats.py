@@ -155,7 +155,6 @@ def calculate_accuracy_metrics(
         raise ValueError(f"Missing required columns in inferred_network_df: {missing_columns_inferred}. Columns present: \
             {list(inferred_network_df.columns)}")
 
-    
     # Ensure that the "Score" column exists in both the ground truth and inferred networks
     for col in ["true_interaction", "predicted_interaction"]:
         if ground_truth_df[col].isna().all():
@@ -165,12 +164,17 @@ def calculate_accuracy_metrics(
 
     # Concatenate dataframes for AUC and further analysis
     auc_df = pd.concat([ground_truth_df, inferred_network_df])
+    auc_df = auc_df.dropna(subset=['true_interaction', 'predicted_interaction', 'Score'])
 
     # Calculate the confusion matrix
     y_true = auc_df['true_interaction'].dropna()
     y_pred = auc_df['predicted_interaction'].dropna()
     y_scores = auc_df['Score'].dropna()
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+    
+    # Check consistency
+    if len(y_true) != len(y_pred) or len(y_true) != len(y_scores):
+        raise ValueError(f"Inconsistent lengths: y_true={len(y_true)}, y_pred={len(y_pred)}, y_scores={len(y_scores)}")
     
     # Calculations for accuracy metrics
     precision = tp / (tp + fp)

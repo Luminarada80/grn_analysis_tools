@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import math
-# import scanpy as sc
+import scanpy as sc
 from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve
 
 from . import grn_formatting
@@ -44,6 +44,83 @@ def plot_auroc_auprc(
     fig.tight_layout()
     plt.savefig(save_path, dpi=200)
     plt.close()
+    
+def plot_multiple_method_auroc_auprc(
+    confusion_matrix_score_dict: dict,
+    save_path: str
+    ):
+    """
+    Plots combined ROC and PR curves for multiple methods on the same plot.
+
+    Parameters:
+    ----------
+    confusion_matrix_score_dict : dict
+        Dictionary containing y_true and y_scores for each method.
+    save_path : str
+        Path to save the resulting plot.
+    """
+    # Define figure for ROC and PR curves
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    # Colors for the plot
+    colors = plt.cm.tab10.colors
+
+    # Iterate through methods and plot all sublists, with one label per method
+    for i, (method, score_dict) in enumerate(confusion_matrix_score_dict.items()):
+        all_fpr = []
+        all_tpr = []
+        all_precision = []
+        all_recall = []
+        roc_aucs = []
+        prc_aucs = []
+
+        # Process each sublist
+        for y_true, y_scores in zip(score_dict['y_true'], score_dict['y_scores']):
+            # Calculate ROC and PR metrics
+            fpr, tpr, _ = roc_curve(y_true, y_scores)
+            precision, recall, _ = precision_recall_curve(y_true, y_scores)
+
+            # Compute AUROC and AUPRC
+            roc_auc = auc(fpr, tpr)
+            prc_auc = auc(recall, precision)
+
+            # Append metrics for averaging
+            all_fpr.append(fpr)
+            all_tpr.append(tpr)
+            all_precision.append(precision)
+            all_recall.append(recall)
+            roc_aucs.append(roc_auc)
+            prc_aucs.append(prc_auc)
+
+            # Plot individual curves without labels
+            axes[0].plot(fpr, tpr, color=colors[i % len(colors)], alpha=1)
+            axes[1].plot(recall, precision, color=colors[i % len(colors)], alpha=1)
+
+        # Compute average AUROC and AUPRC
+        avg_roc_auc = sum(roc_aucs) / len(roc_aucs)
+        avg_prc_auc = sum(prc_aucs) / len(prc_aucs)
+
+        # Add single label for method with average metrics
+        axes[0].plot([], [], label=f'{method} (AUROC = {avg_roc_auc:.2f})', color=colors[i % len(colors)])
+        axes[1].plot([], [], label=f'{method} (AUPRC = {avg_prc_auc:.2f})', color=colors[i % len(colors)])
+
+    # Customize ROC plot
+    axes[0].plot([0, 1], [0, 1], 'k--', lw=1)  # Diagonal line for random performance
+    axes[0].set_title("ROC Curve")
+    axes[0].set_xlabel("False Positive Rate")
+    axes[0].set_ylabel("True Positive Rate")
+    axes[0].legend(loc="lower right")
+
+    # Customize PR plot
+    axes[1].set_title("Precision-Recall Curve")
+    axes[1].set_xlabel("Recall")
+    axes[1].set_ylabel("Precision")
+    axes[1].legend(loc="lower left")
+
+    # Adjust layout and save
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close(fig)
 
 def plot_multiple_histogram_with_thresholds(
     ground_truth_dict: dict,
@@ -133,64 +210,64 @@ def plot_multiple_histogram_with_thresholds(
     plt.savefig(f'{save_path}.png', dpi=200)
     plt.close()
 
-# def plot_cell_expression_histogram(
-#     adata_rna: sc.AnnData, 
-#     output_dir: str, 
-#     cell_type: str = None,
-#     ymin: int | float = 0,
-#     ymax: int | float = 100,
-#     xmin: int | float = 0,
-#     xmax: int | float = None,
-#     filename: str = 'avg_gene_expr_hist',
-#     filetype: str = 'png'
+def plot_cell_expression_histogram(
+    adata_rna: sc.AnnData, 
+    output_dir: str, 
+    cell_type: str = None,
+    ymin: int | float = 0,
+    ymax: int | float = 100,
+    xmin: int | float = 0,
+    xmax: int | float = None,
+    filename: str = 'avg_gene_expr_hist',
+    filetype: str = 'png'
     
-#     ):
-#     """
-#     Plots a histogram showing the distribution of cell gene expression by percent of the population.
+    ):
+    """
+    Plots a histogram showing the distribution of cell gene expression by percent of the population.
     
-#     Assumes the data has cells as columns and genes as rows
+    Assumes the data has cells as columns and genes as rows
 
-#     Parameters
-#     ----------
-#         adata_rna (sc.AnnData):
-#             scRNAseq dataset with cells as columns and genes as rows
-#         output_dir (str):
-#             Directory to save the graph in
-#         cell_type (str):
-#             Can specify the cell type if the dataset is a single cell type
-#         ymin (int | float):
-#             The minimum y-axis value (in percentage, default = 0)
-#         ymax (int | float):
-#             The maximum y-axis value (in percentage, default = 100)
-#         xmin (int | float):
-#             The minimum x-axis value (default = 0)
-#         xmax (int | float):
-#             The maximum x-axis value
-#         filename (str):
-#             The name of the file to save the figure as
-#         filetype (str):
-#             The file extension of the figure (default = png)
-#     """        
+    Parameters
+    ----------
+        adata_rna (sc.AnnData):
+            scRNAseq dataset with cells as columns and genes as rows
+        output_dir (str):
+            Directory to save the graph in
+        cell_type (str):
+            Can specify the cell type if the dataset is a single cell type
+        ymin (int | float):
+            The minimum y-axis value (in percentage, default = 0)
+        ymax (int | float):
+            The maximum y-axis value (in percentage, default = 100)
+        xmin (int | float):
+            The minimum x-axis value (default = 0)
+        xmax (int | float):
+            The maximum x-axis value
+        filename (str):
+            The name of the file to save the figure as
+        filetype (str):
+            The file extension of the figure (default = png)
+    """        
     
-#     n_cells = adata_rna.shape[0]
-#     n_genes = adata_rna.shape[1]
+    n_cells = adata_rna.shape[0]
+    n_genes = adata_rna.shape[1]
     
-#     # Create the histogram and calculate bin heights
-#     plt.hist(adata_rna.obs["n_genes"], bins=30, edgecolor='black', weights=np.ones_like(adata_rna.obs["n_genes"]) / n_cells * 100)
+    # Create the histogram and calculate bin heights
+    plt.hist(adata_rna.obs["n_genes"], bins=30, edgecolor='black', weights=np.ones_like(adata_rna.obs["n_genes"]) / n_cells * 100)
     
-#     if cell_type == None:
-#         plt.title(f'Distribution of the number of genes expressed by cells in the dataset')
-#     else: 
-#         plt.title(f'Distribution of the number of genes expressed by {cell_type}s in the dataset')
+    if cell_type == None:
+        plt.title(f'Distribution of the number of genes expressed by cells in the dataset')
+    else: 
+        plt.title(f'Distribution of the number of genes expressed by {cell_type}s in the dataset')
         
-#     plt.xlabel(f'Number of genes expressed ({n_genes} total genes)')
-#     plt.ylabel(f'Percentage of cells ({n_cells} total cells)')
+    plt.xlabel(f'Number of genes expressed ({n_genes} total genes)')
+    plt.ylabel(f'Percentage of cells ({n_cells} total cells)')
     
-#     plt.yticks(np.arange(0, min(ymax, 100) + 1, 5), [f'{i}%' for i in range(0, min(ymax, 100) + 1, 5)])
-#     plt.ylabel(f'Percentage of cells ({n_cells} total cells)')
+    plt.yticks(np.arange(0, min(ymax, 100) + 1, 5), [f'{i}%' for i in range(0, min(ymax, 100) + 1, 5)])
+    plt.ylabel(f'Percentage of cells ({n_cells} total cells)')
     
-#     plt.savefig(f'{output_dir}/{filename}.{filetype}', dpi=300)
-#     plt.close()
+    plt.savefig(f'{output_dir}/{filename}.{filetype}', dpi=300)
+    plt.close()
 
 def plot_metric_by_step_adjusted(sample_resource_dict, metric, ylabel, title, filename, divide_by_cpu=False):
     """
