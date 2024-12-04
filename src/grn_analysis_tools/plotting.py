@@ -167,7 +167,7 @@ def plot_multiple_histogram_with_thresholds(
         std_dev = np.std(np.concatenate([ground_truth_scores, inferred_scores]))
 
         xmin = mean - 4 * std_dev
-        xmax = mean + 4 * std_dev
+        xmax = max(1e-6, mean + 4 * std_dev)
         
         # Split data into below and above threshold
         tp = ground_truth_scores[(ground_truth_scores >= lower_threshold) & (ground_truth_scores < xmax)]
@@ -185,7 +185,7 @@ def plot_multiple_histogram_with_thresholds(
             raise ValueError("The combined scores array is empty, cannot generate histogram with thresholds.")
         
         bin_edges = np.linspace(np.min(all_scores), np.max(all_scores), num_bins)
-        # bin_edges = np.sort(np.unique(np.append(bin_edges, lower_threshold)))
+        bin_edges = np.sort(np.unique(np.append(bin_edges, lower_threshold)))
         
         # Plot histograms for Oracle Score categories with consistent bin sizes
         plt.hist(tn, bins=bin_edges, alpha=1, color='#b6cde0', label='True Negative (TN)')
@@ -199,8 +199,8 @@ def plot_multiple_histogram_with_thresholds(
         plt.axvline(x=lower_threshold, color='black', linestyle='--', linewidth=2)
         plt.title(f"{method_name.capitalize()} Score Distribution")
         plt.xlabel(f"log2 {method_name.capitalize()} Score")
-        plt.ylim(1, None)
-        plt.xlim([-20,20])
+        # plt.ylim(1, None)
+        # plt.xlim([-20,20])
         plt.ylabel("Frequency")
         
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
@@ -359,3 +359,52 @@ def plot_total_metric_by_sample(sample_resource_dict, metric, ylabel, title, fil
     # Show plot
     plt.tight_layout()
     plt.savefig(filename, dpi=200)
+
+def plot_inference_score_histogram(inferred_network_df, method_name, save_path):
+    import os
+
+    plt.figure(figsize=(18, 8))
+    
+    # Check for "Score" column
+    if "Score" not in inferred_network_df.columns:
+        raise ValueError("The input DataFrame must contain a 'Score' column.")
+    
+    inferred_network_copy = inferred_network_df.copy()
+    
+    # Calculate thresholds for filtering
+    top_threshold = np.mean(inferred_network_copy["Score"]) + (np.std(inferred_network_copy["Score"]) * 5)
+    bottom_threshold = max(1e-6, np.mean(inferred_network_copy["Score"]) - (np.std(inferred_network_copy["Score"]) * 5))
+
+    
+    # Subset the scores to within the threshold
+    inferred_network_copy = inferred_network_copy[
+        (inferred_network_copy["Score"] <= top_threshold) & 
+        (inferred_network_copy["Score"] >= bottom_threshold)
+    ]
+    
+    # Handle non-positive scores for log transformation
+    if (inferred_network_copy["Score"] <= 0).any():
+        raise ValueError("Scores must be positive for log2 transformation.")
+    
+    # Set the Scores to a log2 transformation
+    inferred_network_copy["Score"] = np.log2(inferred_network_copy["Score"])
+    
+    # Plot histogram
+    plt.hist(
+        inferred_network_copy["Score"],
+        bins=200,
+        alpha=1,
+        color='#4195df',
+        label="Inferred edge scores"
+    )
+    
+    plt.title(f"{method_name.capitalize()} Inferred Network Score Distribution")
+    plt.xlabel(f"log2 {method_name.capitalize()} Score")
+    plt.ylabel("Frequency")
+    
+    # Save the plot
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.savefig(save_path, dpi=200)
+    plt.close()
+
+    return inferred_network_copy

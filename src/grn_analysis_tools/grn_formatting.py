@@ -44,8 +44,8 @@ def source_target_cols_uppercase(df: pd.DataFrame) -> pd.DataFrame:
     ----------
         pd.DataFrame: The same dataframe with uppercase gene names
     """
-    df["Source"] = df["Source"].str.upper()
-    df["Target"] = df["Target"].str.upper()
+    df["Source"] = df["Source"].str.upper().str.strip()
+    df["Target"] = df["Target"].str.upper().str.strip()
 
 def create_standard_dataframe(
     network_df: pd.DataFrame,
@@ -284,6 +284,5 @@ def remove_tf_tg_not_in_ground_truth(
         (inferred_network_df['Target'].isin(ground_truth_tgs))
     ]
     
+    
     return aligned_inferred_network
-
-# test
