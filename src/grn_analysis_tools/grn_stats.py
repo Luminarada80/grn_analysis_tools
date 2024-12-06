@@ -224,7 +224,8 @@ def create_randomized_inference_scores(
     inferred_network_df: pd.DataFrame,
     lower_threshold: int = None,
     num_edges_for_early_precision: int = 1000,
-    histogram_save_path: str = None
+    histogram_save_path: str = None,
+    random_method = "random_permutation"
     ):
     
     """
@@ -294,9 +295,18 @@ def create_randomized_inference_scores(
         [ground_truth_df["Score"], inferred_network_df["Score"]]
     ).values
     
-    # Randomly reassign scores back to the ground truth and inferred network
-    resampled_inferred_network_scores = np.random.choice(total_scores, size=len(inferred_network_score), replace=True)
-    resampled_ground_truth_scores = np.random.choice(total_scores, size=len(ground_truth_score), replace=True)
+    if random_method == "random_permutation":
+    
+        # Randomly reassign scores back to the ground truth and inferred network
+        resampled_inferred_network_scores = np.random.choice(total_scores, size=len(inferred_network_score), replace=True)
+        resampled_ground_truth_scores = np.random.choice(total_scores, size=len(ground_truth_score), replace=True)
+    
+    elif random_method == "uniform_distribution":
+        uniform_distribution = np.random.uniform(low = 0.0, high = 1.0, size = len(total_scores)) 
+        
+        # Randomly reassign scores back to the ground truth and inferred network
+        resampled_inferred_network_scores = np.random.choice(uniform_distribution, size=len(inferred_network_score), replace=True)
+        resampled_ground_truth_scores = np.random.choice(uniform_distribution, size=len(ground_truth_score), replace=True)
     
     # Replace the edge Score in the copied dataframe with the resampled Score
     inferred_network_df_copy["Score"] = resampled_inferred_network_scores

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "grn_analysis_tools"
-version = "0.0.5"
+version = "0.0.6"
 description = "A package with helper functions for analyzing gene regulatory network inference methods"
 requires-python = ">=3.8"
 authors = [{ name = "Eric Moeller", email = "luminarada80@gmail.com" }]
