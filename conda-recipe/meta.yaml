@@ -1,6 +1,6 @@
 package:
   name: grn_analysis_tools
-  version: 0.0.6
+  version: 0.0.7
 
 source:
   git_url: https://github.com/Luminarada80/grn_analysis_tools.git

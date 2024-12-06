@@ -32,12 +32,16 @@ def plot_auroc_auprc(
     axes[0].set_title(f"AUROC")
     axes[0].set_xlabel("False Positive Rate")
     axes[0].set_ylabel("True Positive Rate")
+    axes[0].set_ylim((0,1))
+    axes[0].set_xlim((0.1))
     axes[0].legend(loc="lower right")
         
         
     axes[1].set_title(f"AUPRC")
     axes[1].set_xlabel("Recall")
     axes[1].set_ylabel("Precision")
+    axes[1].set_ylim((0,1))
+    axes[1].set_xlim((0.1))
     axes[1].legend(loc="lower right")
 
     # Adjust layout and display the figure
@@ -109,12 +113,16 @@ def plot_multiple_method_auroc_auprc(
     axes[0].set_title("ROC Curve")
     axes[0].set_xlabel("False Positive Rate")
     axes[0].set_ylabel("True Positive Rate")
+    axes[0].set_ylim((0,1))
+    axes[0].set_xlim((0.1))
     axes[0].legend(loc="lower right")
 
     # Customize PR plot
     axes[1].set_title("Precision-Recall Curve")
     axes[1].set_xlabel("Recall")
     axes[1].set_ylabel("Precision")
+    axes[1].set_ylim((0,1))
+    axes[1].set_xlim((0.1))
     axes[1].legend(loc="lower left")
 
     # Adjust layout and save
