@@ -33,7 +33,7 @@ def plot_auroc_auprc(
     axes[0].set_xlabel("False Positive Rate")
     axes[0].set_ylabel("True Positive Rate")
     axes[0].set_ylim((0,1))
-    axes[0].set_xlim((0.1))
+    axes[0].set_xlim((0,1))
     axes[0].legend(loc="lower right")
         
         
@@ -41,7 +41,7 @@ def plot_auroc_auprc(
     axes[1].set_xlabel("Recall")
     axes[1].set_ylabel("Precision")
     axes[1].set_ylim((0,1))
-    axes[1].set_xlim((0.1))
+    axes[1].set_xlim((0,1))
     axes[1].legend(loc="lower right")
 
     # Adjust layout and display the figure
@@ -114,7 +114,7 @@ def plot_multiple_method_auroc_auprc(
     axes[0].set_xlabel("False Positive Rate")
     axes[0].set_ylabel("True Positive Rate")
     axes[0].set_ylim((0,1))
-    axes[0].set_xlim((0.1))
+    axes[0].set_xlim((0,1))
     axes[0].legend(loc="lower right")
 
     # Customize PR plot
@@ -122,7 +122,7 @@ def plot_multiple_method_auroc_auprc(
     axes[1].set_xlabel("Recall")
     axes[1].set_ylabel("Precision")
     axes[1].set_ylim((0,1))
-    axes[1].set_xlim((0.1))
+    axes[1].set_xlim((0,1))
     axes[1].legend(loc="lower left")
 
     # Adjust layout and save
@@ -352,7 +352,7 @@ def plot_total_metric_by_sample(sample_resource_dict, metric, ylabel, title, fil
     # Plotting the total metric for each sample
     fig, ax = plt.subplots(figsize=(10, 6))
     x = np.arange(len(samples))  # x locations for the samples
-    bar_width = 0.15  # Width of the bars
+    bar_width = 0,15  # Width of the bars
 
 
     ax.bar(x, total_metric_data, bar_width, color='blue', label=metric)
