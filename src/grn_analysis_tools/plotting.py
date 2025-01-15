@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import math
-import scanpy as sc
+# import scanpy as sc
+import pandas as pd
 from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve
 
 from . import grn_formatting
@@ -13,7 +14,7 @@ def plot_auroc_auprc(
     """Plots the AUROC and AUPRC"""
     
     # Define figure and subplots for combined AUROC and AUPRC plots
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))    
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))    
     
     for method, score_dict in confusion_matrix_score_dict.items():
         y_true = score_dict['y_true']
@@ -34,7 +35,6 @@ def plot_auroc_auprc(
     axes[0].set_ylabel("True Positive Rate")
     axes[0].set_ylim((0,1))
     axes[0].set_xlim((0,1))
-    axes[0].legend(loc="lower right")
         
         
     axes[1].set_title(f"AUPRC")
@@ -42,12 +42,109 @@ def plot_auroc_auprc(
     axes[1].set_ylabel("Precision")
     axes[1].set_ylim((0,1))
     axes[1].set_xlim((0,1))
-    axes[1].legend(loc="lower right")
+    
+    # Place the ROC legend below its plot
+    axes[0].legend(
+        loc="upper center",  # Anchor the legend at the upper center of the bounding box
+        bbox_to_anchor=(0.5, -0.2),  # Move it below the axes
+        ncol=1,  # Number of columns in the legend
+    )
+
+    # Place the PR legend below its plot
+    axes[1].legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.2),
+        ncol=1,
+    )
 
     # Adjust layout and display the figure
     fig.tight_layout()
     plt.savefig(save_path, dpi=200)
     plt.close()
+    
+def plot_all_samples_auroc_auprc(
+    confusion_matrix_score_dict: dict,
+    save_path: str
+):
+    """
+    Plots combined ROC and PR curves for multiple methods on the same plot.
+
+    Parameters:
+    ----------
+    confusion_matrix_score_dict : dict
+        Dictionary containing y_true and y_scores for each method.
+    save_path : str
+        Path to save the resulting plot.
+    """
+    # Define figure for ROC and PR curves
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+    # Colors for the plot
+    colors = plt.cm.tab10.colors
+
+    # Iterate through methods and plot all sublists, with one label per method
+    for i, (method, score_dict) in enumerate(confusion_matrix_score_dict.items()):
+        roc_aucs = []
+        prc_aucs = []
+
+        # Iterate over samples within the method
+        for j, (y_true, y_scores) in enumerate(zip(score_dict['y_true'], score_dict['y_scores'])):
+            # Assign a unique color for each sample
+            sample_color = colors[j % len(colors)]
+
+            # Calculate ROC and PR metrics
+            fpr, tpr, _ = roc_curve(y_true, y_scores)
+            precision, recall, _ = precision_recall_curve(y_true, y_scores)
+
+            # Compute AUROC and AUPRC
+            roc_auc = auc(fpr, tpr)
+            prc_auc = auc(recall, precision)
+
+            # Append metrics for averaging
+            roc_aucs.append(roc_auc)
+            prc_aucs.append(prc_auc)
+
+            # Plot individual curves
+            axes[0].plot(fpr, tpr, color=sample_color, alpha=0.7, label=f'Sample {j+1} (AUROC = {roc_auc:.2f})')
+            axes[1].plot(recall, precision, color=sample_color, alpha=0.7, label=f'Sample {j+1} (AUPRC = {prc_auc:.2f})')
+
+        # Add a label for method averages
+        axes[0].plot([], [], color=colors[i % len(colors)], linewidth=2)
+        axes[1].plot([], [], color=colors[i % len(colors)], linewidth=2)
+
+        
+    # Customize ROC plot
+    axes[0].plot([0, 1], [0, 1], 'k--', lw=1)  # Diagonal line for random performance
+    axes[0].set_title(f"{method} ROC Curve")
+    axes[0].set_xlabel("False Positive Rate")
+    axes[0].set_ylabel("True Positive Rate")
+    axes[0].set_ylim((0, 1))
+    axes[0].set_xlim((0, 1))
+
+    # Customize PR plot
+    axes[1].set_title(f"{method} Precision-Recall Curve")
+    axes[1].set_xlabel("Recall")
+    axes[1].set_ylabel("Precision")
+    axes[1].set_ylim((0, 1))
+    axes[1].set_xlim((0, 1))
+    
+    axes[0].legend(
+    loc="upper center", 
+    bbox_to_anchor=(0.5, -0.3),
+    ncol=1,  # More columns for wrapping
+    )
+
+    axes[1].legend(
+        loc="upper center", 
+        bbox_to_anchor=(0.5, -0.3),
+        ncol=1,
+    )
+
+    # Adjust layout and save
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close(fig)
+
     
 def plot_multiple_method_auroc_auprc(
     confusion_matrix_score_dict: dict,
@@ -115,7 +212,6 @@ def plot_multiple_method_auroc_auprc(
     axes[0].set_ylabel("True Positive Rate")
     axes[0].set_ylim((0,1))
     axes[0].set_xlim((0,1))
-    axes[0].legend(loc="lower right")
 
     # Customize PR plot
     axes[1].set_title("Precision-Recall Curve")
@@ -123,7 +219,138 @@ def plot_multiple_method_auroc_auprc(
     axes[1].set_ylabel("Precision")
     axes[1].set_ylim((0,1))
     axes[1].set_xlim((0,1))
-    axes[1].legend(loc="lower left")
+    
+        # Place the ROC legend below its plot
+    axes[0].legend(
+        loc="upper center",  # Anchor the legend at the upper center of the bounding box
+        bbox_to_anchor=(0.5, -0.2),  # Move it below the axes
+        ncol=1,  # Number of columns in the legend
+    )
+
+    # Place the PR legend below its plot
+    axes[1].legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.2),
+        ncol=1,
+    )
+
+    # Adjust layout and save
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close(fig)
+
+def plot_normal_and_randomized_roc_prc(
+    confusion_matrix_score_dict: dict,
+    save_path: str
+):
+    """
+    Plots combined ROC and PRC curves for normal and randomized scores of multiple methods.
+
+    Parameters:
+    ----------
+    confusion_matrix_score_dict : dict
+        Dictionary containing normal and randomized y_true and y_scores for each method.
+    save_path : str
+        Path to save the resulting plot.
+    """
+    # Define figure for ROC and PR curves
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    # Colors for the plot
+    colors = plt.cm.tab10.colors
+    
+    # Iterate through methods
+    for i, (method, score_dict) in enumerate(confusion_matrix_score_dict.items()):
+        # Extract normal and randomized scores
+        normal_y_true = score_dict['normal_y_true']
+        normal_y_scores = score_dict['normal_y_scores']
+        randomized_y_true = score_dict['randomized_y_true']
+        randomized_y_scores = score_dict['randomized_y_scores']
+
+        # Initialize lists for averaging metrics
+        all_fpr_normal, all_tpr_normal, all_fpr_random, all_tpr_random = [], [], [], []
+        all_precision_normal, all_recall_normal, all_precision_random, all_recall_random = [], [], [], []
+        roc_aucs_normal, roc_aucs_random, prc_aucs_normal, prc_aucs_random = [], [], [], []
+
+        # Process normal scores
+        y_true = normal_y_true.values
+        y_scores = normal_y_scores.values
+
+        fpr, tpr, _ = roc_curve(y_true, y_scores)
+        precision, recall, _ = precision_recall_curve(y_true, y_scores)
+        roc_auc = auc(fpr, tpr)
+        prc_auc = auc(recall, precision)
+
+        all_fpr_normal.append(fpr)
+        all_tpr_normal.append(tpr)
+        all_precision_normal.append(precision)
+        all_recall_normal.append(recall)
+        roc_aucs_normal.append(roc_auc)
+        prc_aucs_normal.append(prc_auc)
+
+        # Plot individual curves for normal
+        axes[0].plot(fpr, tpr, color=colors[i % len(colors)], linestyle='-')
+        axes[1].plot(recall, precision, color=colors[i % len(colors)], linestyle='-')
+
+        # Process randomized scores
+        y_true = randomized_y_true.values
+        y_scores = randomized_y_scores.values
+        fpr, tpr, _ = roc_curve(y_true, y_scores)
+        precision, recall, _ = precision_recall_curve(y_true, y_scores)
+        roc_auc = auc(fpr, tpr)
+        prc_auc = auc(recall, precision)
+
+        all_fpr_random.append(fpr)
+        all_tpr_random.append(tpr)
+        all_precision_random.append(precision)
+        all_recall_random.append(recall)
+        roc_aucs_random.append(roc_auc)
+        prc_aucs_random.append(prc_auc)
+
+        # Plot individual curves for randomized
+        axes[0].plot(fpr, tpr, color=colors[i % len(colors)], linestyle='--')
+        axes[1].plot(recall, precision, color=colors[i % len(colors)], linestyle='--')
+
+        # Compute average metrics for labeling
+        avg_roc_auc_normal = sum(roc_aucs_normal) / len(roc_aucs_normal)
+        avg_prc_auc_normal = sum(prc_aucs_normal) / len(prc_aucs_normal)
+        avg_roc_auc_random = sum(roc_aucs_random) / len(roc_aucs_random)
+        avg_prc_auc_random = sum(prc_aucs_random) / len(prc_aucs_random)
+
+        # Add single label for normal and randomized
+        axes[0].plot([], [], label=f'{method} Normal (AUROC = {avg_roc_auc_normal:.2f})', color=colors[i % len(colors)], linestyle='-')
+        axes[0].plot([], [], label=f'{method} Randomized (AUROC = {avg_roc_auc_random:.2f})', color=colors[i % len(colors)], linestyle='--')
+        axes[1].plot([], [], label=f'{method} Normal (AUPRC = {avg_prc_auc_normal:.2f})', color=colors[i % len(colors)], linestyle='-')
+        axes[1].plot([], [], label=f'{method} Randomized (AUPRC = {avg_prc_auc_random:.2f})', color=colors[i % len(colors)], linestyle='--')
+
+    # Customize ROC plot
+    axes[0].plot([0, 1], [0, 1], 'k--', lw=1)  # Diagonal line for random performance
+    axes[0].set_title("ROC Curve")
+    axes[0].set_xlabel("False Positive Rate")
+    axes[0].set_ylabel("True Positive Rate")
+    axes[0].set_ylim((0, 1))
+    axes[0].set_xlim((0, 1))
+
+    # Customize PR plot
+    axes[1].set_title("Precision-Recall Curve")
+    axes[1].set_xlabel("Recall")
+    axes[1].set_ylabel("Precision")
+    axes[1].set_ylim((0, 1))
+    axes[1].set_xlim((0, 1))
+    
+        # Place the ROC legend below its plot
+    axes[0].legend(
+        loc="upper center",  # Anchor the legend at the upper center of the bounding box
+        bbox_to_anchor=(0.5, -0.2),  # Move it below the axes
+        ncol=1,  # Number of columns in the legend
+    )
+
+    # Place the PR legend below its plot
+    axes[1].legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.2),
+        ncol=1,
+    )
 
     # Adjust layout and save
     plt.tight_layout()
@@ -196,12 +423,12 @@ def plot_multiple_histogram_with_thresholds(
         bin_edges = np.sort(np.unique(np.append(bin_edges, lower_threshold)))
         
         # Plot histograms for Oracle Score categories with consistent bin sizes
-        plt.hist(tn, bins=bin_edges, alpha=1, color='#b6cde0', label='True Negative (TN)')
-        plt.hist(fn, bins=bin_edges, alpha=1, color='#efc69f', label='False Negative (FN)')
+        plt.hist(tn, bins=bin_edges, alpha=0.7, color='#b6cde0', label='True Negative (TN)')
+        plt.hist(fn, bins=bin_edges, alpha=0.7, color='#efc69f', label='False Negative (FN)')
         
         # Plot the positive values on top to make sure there is no ovelap
-        plt.hist(fp, bins=bin_edges, alpha=1, color='#4195df', label='False Positive (FP)')
-        plt.hist(tp, bins=bin_edges, alpha=1, color='#dc8634', label='True Positive (TP)')
+        plt.hist(fp, bins=bin_edges, alpha=0.7, color='#4195df', label='False Positive (FP)')
+        plt.hist(tp, bins=bin_edges, alpha=0.7, color='#dc8634', label='True Positive (TP)')
 
         # Plot threshold line
         plt.axvline(x=lower_threshold, color='black', linestyle='--', linewidth=2)
@@ -219,7 +446,7 @@ def plot_multiple_histogram_with_thresholds(
     plt.close()
 
 def plot_cell_expression_histogram(
-    adata_rna: sc.AnnData, 
+    adata_rna, 
     output_dir: str, 
     cell_type: str = None,
     ymin: int | float = 0,
@@ -368,7 +595,7 @@ def plot_total_metric_by_sample(sample_resource_dict, metric, ylabel, title, fil
     plt.tight_layout()
     plt.savefig(filename, dpi=200)
 
-def plot_inference_score_histogram(inferred_network_df, method_name, save_path):
+def plot_inference_score_histogram(inferred_network_df: pd.DataFrame, method_name: str, save_path: str):
     import os
 
     plt.figure(figsize=(18, 8))
@@ -379,9 +606,13 @@ def plot_inference_score_histogram(inferred_network_df, method_name, save_path):
     
     inferred_network_copy = inferred_network_df.copy()
     
+    # Calculate the mean and standard deviation as scalars
+    mean_score = np.mean(inferred_network_copy["Score"])
+    std_score = np.mean(inferred_network_copy["Score"])
+
     # Calculate thresholds for filtering
-    top_threshold = np.mean(inferred_network_copy["Score"]) + (np.std(inferred_network_copy["Score"]) * 5)
-    bottom_threshold = max(1e-6, np.mean(inferred_network_copy["Score"]) - (np.std(inferred_network_copy["Score"]) * 5))
+    top_threshold = mean_score + (std_score * 5)
+    bottom_threshold = max(1e-6, float(mean_score) - (float(std_score) * 5))
 
     
     # Subset the scores to within the threshold
