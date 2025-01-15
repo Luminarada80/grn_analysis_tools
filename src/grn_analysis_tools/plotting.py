@@ -64,6 +64,7 @@ def plot_auroc_auprc(
     
 def plot_all_samples_auroc_auprc(
     confusion_matrix_score_dict: dict,
+    method_samples: list,
     save_path: str
 ):
     """
@@ -105,8 +106,8 @@ def plot_all_samples_auroc_auprc(
             prc_aucs.append(prc_auc)
 
             # Plot individual curves
-            axes[0].plot(fpr, tpr, color=sample_color, alpha=0.7, label=f'Sample {j+1} (AUROC = {roc_auc:.2f})')
-            axes[1].plot(recall, precision, color=sample_color, alpha=0.7, label=f'Sample {j+1} (AUPRC = {prc_auc:.2f})')
+            axes[0].plot(fpr, tpr, color=sample_color, alpha=0.7, label=f'{method_samples[j]} (AUROC = {roc_auc:.2f})')
+            axes[1].plot(recall, precision, color=sample_color, alpha=0.7, label=f'{method_samples[j]} (AUPRC = {prc_auc:.2f})')
 
         # Add a label for method averages
         axes[0].plot([], [], color=colors[i % len(colors)], linewidth=2)
@@ -145,7 +146,6 @@ def plot_all_samples_auroc_auprc(
     plt.savefig(save_path)
     plt.close(fig)
 
-    
 def plot_multiple_method_auroc_auprc(
     confusion_matrix_score_dict: dict,
     save_path: str
