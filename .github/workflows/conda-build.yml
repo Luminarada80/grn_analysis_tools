@@ -36,4 +36,9 @@ jobs:
       env:
         ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
       run: |
-        conda run -n base anaconda upload /usr/share/miniconda/conda-bld/noarch/grn_analysis_tools-*.tar.bz2 --force
+        PACKAGE_PATH=$(find /usr/share/miniconda/conda-bld/noarch/ -name "grn_analysis_tools-*.conda")
+        if [ -z "$PACKAGE_PATH" ]; then
+          echo "Package not found!"
+          exit 1
+        fi
+        conda run -n base anaconda upload "$PACKAGE_PATH" --force
