@@ -1,11 +1,26 @@
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
+
 import numpy as np
 import math
 # import scanpy as sc
 import pandas as pd
 from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve
+from scipy import stats
 
 from . import grn_formatting
+
+# Set font to Arial and adjust font sizes
+rcParams.update({
+    'font.family': 'sans-serif',
+    'font.size': 16,  # General font size
+    'axes.titlesize': 20,  # Title font size
+    'axes.labelsize': 18,  # Axis label font size
+    'xtick.labelsize': 16,  # X-axis tick label size
+    'ytick.labelsize': 16,  # Y-axis tick label size
+    'legend.fontsize': 16  # Legend font size
+})
+
 
 def plot_auroc_auprc(
     confusion_matrix_score_dict: dict,
@@ -272,9 +287,16 @@ def plot_normal_and_randomized_roc_prc(
         all_precision_normal, all_recall_normal, all_precision_random, all_recall_random = [], [], [], []
         roc_aucs_normal, roc_aucs_random, prc_aucs_normal, prc_aucs_random = [], [], [], []
 
-        # Process normal scores
-        y_true = normal_y_true.values
-        y_scores = normal_y_scores.values
+        # Ensure y_true and y_scores are NumPy arrays
+        if hasattr(normal_y_true, "values"):  # Check if .values exists (Pandas Series/DataFrame)
+            y_true = normal_y_true.values
+        else:  # Already a NumPy array
+            y_true = normal_y_true
+
+        if hasattr(normal_y_scores, "values"):
+            y_scores = normal_y_scores.values
+        else:
+            y_scores = normal_y_scores
 
         fpr, tpr, _ = roc_curve(y_true, y_scores)
         precision, recall, _ = precision_recall_curve(y_true, y_scores)
@@ -292,9 +314,17 @@ def plot_normal_and_randomized_roc_prc(
         axes[0].plot(fpr, tpr, color=colors[i % len(colors)], linestyle='-')
         axes[1].plot(recall, precision, color=colors[i % len(colors)], linestyle='-')
 
-        # Process randomized scores
-        y_true = randomized_y_true.values
-        y_scores = randomized_y_scores.values
+        # Ensure y_true and y_scores are NumPy arrays
+        if hasattr(normal_y_true, "values"):  # Check if .values exists (Pandas Series/DataFrame)
+            y_true = randomized_y_true.values
+        else:  # Already a NumPy array
+            y_true = randomized_y_true
+
+        if hasattr(normal_y_scores, "values"):
+            y_scores = randomized_y_scores.values
+        else:
+            y_scores = randomized_y_scores
+        
         fpr, tpr, _ = roc_curve(y_true, y_scores)
         precision, recall, _ = precision_recall_curve(y_true, y_scores)
         roc_auc = auc(fpr, tpr)
@@ -393,7 +423,41 @@ def plot_multiple_histogram_with_thresholds(
         ground_truth_scores = ground_truth_dict[method_name]['Score'].dropna()
         inferred_scores = inferred_network_dict[method_name]['Score'].dropna()
         
-        plt.subplot(num_rows, num_cols, i+1)
+        # Fit normal distributions
+        mu1, std1 = np.mean(ground_truth_scores), np.std(ground_truth_scores)
+        mu2, std2 = np.mean(inferred_scores), np.std(inferred_scores)
+
+        # Generate x-axis range
+        x = np.linspace(min(mu1 - 4*std1, mu2 - 4*std2), max(mu1 + 4*std1, mu2 + 4*std2), 1000)
+
+        # Compute PDFs
+        pdf1 = stats.norm.pdf(x, mu1, std1)
+        pdf2 = stats.norm.pdf(x, mu2, std2)
+        
+        b_distance = 0.25 * np.log(0.25 * ((std1 / std2) + (std2 / std1) + 2)) + \
+             0.25 * (((mu1 - mu2) ** 2) / (std1 + std2))
+        # print(f"Bhattacharyya Distance: {b_distance:.3f}")
+
+        # Calculate overlap area
+        overlap_area = np.trapz(np.minimum(pdf1, pdf2), x)
+        # print(f"Percentage Overlap: {overlap_area * 100:.2f}%")
+        
+        # Means and standard deviations
+        mean1, mean2 = np.mean(ground_truth_scores), np.mean(inferred_scores)
+        std1, std2 = np.std(ground_truth_scores), np.std(inferred_scores)
+
+        # Cohen's d
+        cohen_d = abs(mean1 - mean2) / np.sqrt((std1**2 + std2**2) / 2)
+        # print(f"Cohen's d: {cohen_d:.3f}")
+        
+        if cohen_d < 0.2:
+            d_result = "Negligible"
+        elif 0.2 <= cohen_d < 0.5:
+            d_result = "Small"
+        elif 0.5 <= cohen_d < 0.8:
+            d_result = "Moderate"
+        else:
+            d_result = "Large"
         
         # Define the threshold
         lower_threshold = np.mean(ground_truth_scores) - np.std(ground_truth_scores)
@@ -429,16 +493,21 @@ def plot_multiple_histogram_with_thresholds(
         # Plot the positive values on top to make sure there is no ovelap
         plt.hist(fp, bins=bin_edges, alpha=0.7, color='#4195df', label='False Positive (FP)')
         plt.hist(tp, bins=bin_edges, alpha=0.7, color='#dc8634', label='True Positive (TP)')
-
+        
+        # Add t-test result to legend
+        overlap_text = f"Overlap: {overlap_area * 100:.2f}%\nBhattacharyya Distance: {b_distance:.2f}\nCohen's d: {cohen_d:.2f}, {d_result} Difference"
+        
+        plt.plot([], [], label=overlap_text, color="none")
+        
         # Plot threshold line
         plt.axvline(x=lower_threshold, color='black', linestyle='--', linewidth=2)
-        plt.title(f"{method_name.capitalize()} Score Distribution")
-        plt.xlabel(f"log2 {method_name.capitalize()} Score")
+        plt.title(f"{method_name.capitalize()} Score Distribution", fontsize=20)
+        plt.xlabel(f"log2 {method_name.capitalize()} Score", fontsize=18)
         # plt.ylim(1, None)
         # plt.xlim([-20,20])
         plt.ylabel("Frequency")
-        
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+                
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0., fontsize=18)
 
     # Adjust layout and save the plot
     plt.tight_layout()
