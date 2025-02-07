@@ -121,8 +121,8 @@ def plot_all_samples_auroc_auprc(
             prc_aucs.append(prc_auc)
 
             # Plot individual curves
-            axes[0].plot(fpr, tpr, color=sample_color, alpha=0.7, label=f'{method_samples[j]} (AUROC = {roc_auc:.2f})')
-            axes[1].plot(recall, precision, color=sample_color, alpha=0.7, label=f'{method_samples[j]} (AUPRC = {prc_auc:.2f})')
+            axes[0].plot(fpr, tpr, color=sample_color, alpha=0.7) #, label=f'{method_samples[j]} (AUROC = {roc_auc:.2f})')
+            axes[1].plot(recall, precision, color=sample_color, alpha=0.7) #, label=f'{method_samples[j]} (AUPRC = {prc_auc:.2f})')
 
         # Add a label for method averages
         axes[0].plot([], [], color=colors[i % len(colors)], linewidth=2)
@@ -176,7 +176,7 @@ def plot_multiple_method_auroc_auprc(
         Path to save the resulting plot.
     """
     # Define figure for ROC and PR curves
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 14))
 
     # Colors for the plot
     colors = plt.cm.tab10.colors
@@ -240,6 +240,7 @@ def plot_multiple_method_auroc_auprc(
         loc="upper center",  # Anchor the legend at the upper center of the bounding box
         bbox_to_anchor=(0.5, -0.2),  # Move it below the axes
         ncol=1,  # Number of columns in the legend
+        fontsize=12
     )
 
     # Place the PR legend below its plot
@@ -247,6 +248,7 @@ def plot_multiple_method_auroc_auprc(
         loc="upper center",
         bbox_to_anchor=(0.5, -0.2),
         ncol=1,
+        fontsize=12
     )
 
     # Adjust layout and save
