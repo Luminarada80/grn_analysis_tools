@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
-
+import seaborn as sns
 import numpy as np
 import math
 # import scanpy as sc
@@ -21,6 +21,62 @@ rcParams.update({
     'legend.fontsize': 16  # Legend font size
 })
 
+def balance_true_negative_scores(y_true, y_scores):
+    # Balance positive and negative samples for AUROC only
+    y_true = np.array(y_true)
+    y_scores = np.array(y_scores)
+
+    pos_indices = np.where(y_true == 1)[0]
+    neg_indices = np.where(y_true == 0)[0]
+
+    # Subsample negative class to match number of positives
+    if len(pos_indices) > 0 and len(neg_indices) > 0:
+        if len(pos_indices) < len(neg_indices):
+            rng = np.random.default_rng(seed=42)
+            sampled_neg_indices = rng.choice(neg_indices, size=len(pos_indices), replace=False)
+            balanced_indices = np.concatenate([pos_indices, sampled_neg_indices])
+            balanced_indices.sort()
+
+            # For AUROC only
+            y_true_balanced = y_true[balanced_indices]
+            y_scores_balanced = y_scores[balanced_indices]
+        else:
+            y_true_balanced = y_true
+            y_scores_balanced = y_scores
+    else:
+        y_true_balanced = y_true
+        y_scores_balanced = y_scores
+    
+    return y_true_balanced, y_scores_balanced
+
+def plot_classification_score_boxplots(inferred_network_df, ground_truth_df, save_path):
+    ground_truth_df_copy = ground_truth_df.copy()  # just to be sure we are not modifying original
+    ground_truth_df_copy.loc[ground_truth_df_copy['predicted_interaction'] == 1, 'classification'] = 'TP'
+    ground_truth_df_copy.loc[ground_truth_df_copy['predicted_interaction'] == 0, 'classification'] = 'FN'
+
+    # For the inferred network, we set true_interaction to 0.
+    # So we label:
+    #   - FP: true_interaction==0 AND predicted_interaction==1
+    #   - TN: true_interaction==0 AND predicted_interaction==0
+
+    inferred_network_df_copy = inferred_network_df.copy()
+    inferred_network_df_copy.loc[inferred_network_df_copy['predicted_interaction'] == 1, 'classification'] = 'FP'
+    inferred_network_df_copy.loc[inferred_network_df_copy['predicted_interaction'] == 0, 'classification'] = 'TN'
+
+    # Combine both dataframes into one so that you have all score distributions in one DataFrame.
+    combined_df = pd.concat([ground_truth_df_copy, inferred_network_df_copy], ignore_index=True)
+
+    # # Check the counts per classification
+    # print(combined_df['classification'].value_counts())
+
+    # Now plot the box and whisker plot of the score distribution by classification:
+    plt.figure(figsize=(8, 6))
+    sns.boxplot(x='classification', y='Score', data=combined_df, showfliers=False,
+                order=['TP', 'FP', 'TN', 'FN'])
+    plt.title('Score Distributions by Classification')
+    plt.xlabel('Classification')
+    plt.ylabel('Score')
+    plt.savefig(save_path, dpi=200)
 
 def plot_auroc_auprc(
     confusion_matrix_score_dict: dict,
@@ -107,9 +163,11 @@ def plot_all_samples_auroc_auprc(
         for j, (y_true, y_scores) in enumerate(zip(score_dict['y_true'], score_dict['y_scores'])):
             # Assign a unique color for each sample
             sample_color = colors[j % len(colors)]
+            
+            y_true_balanced, y_scores_balanced = balance_true_negative_scores(y_true, y_scores)
 
             # Calculate ROC and PR metrics
-            fpr, tpr, _ = roc_curve(y_true, y_scores)
+            fpr, tpr, _ = roc_curve(y_true_balanced, y_scores_balanced)
             precision, recall, _ = precision_recall_curve(y_true, y_scores)
 
             # Compute AUROC and AUPRC
@@ -144,17 +202,17 @@ def plot_all_samples_auroc_auprc(
     axes[1].set_ylim((0, 1))
     axes[1].set_xlim((0, 1))
     
-    axes[0].legend(
-    loc="upper center", 
-    bbox_to_anchor=(0.5, -0.3),
-    ncol=1,  # More columns for wrapping
-    )
+    # axes[0].legend(
+    # loc="upper center", 
+    # bbox_to_anchor=(0.5, -0.3),
+    # ncol=1,  # More columns for wrapping
+    # )
 
-    axes[1].legend(
-        loc="upper center", 
-        bbox_to_anchor=(0.5, -0.3),
-        ncol=1,
-    )
+    # axes[1].legend(
+    #     loc="upper center", 
+    #     bbox_to_anchor=(0.5, -0.3),
+    #     ncol=1,
+    # )
 
     # Adjust layout and save
     plt.tight_layout()
@@ -192,8 +250,11 @@ def plot_multiple_method_auroc_auprc(
 
         # Process each sublist
         for y_true, y_scores in zip(score_dict['y_true'], score_dict['y_scores']):
+
+            y_true_balanced, y_scores_balanced = balance_true_negative_scores(y_true, y_scores)
+
             # Calculate ROC and PR metrics
-            fpr, tpr, _ = roc_curve(y_true, y_scores)
+            fpr, tpr, _ = roc_curve(y_true_balanced, y_scores_balanced)
             precision, recall, _ = precision_recall_curve(y_true, y_scores)
 
             # Compute AUROC and AUPRC
@@ -240,7 +301,7 @@ def plot_multiple_method_auroc_auprc(
         loc="upper center",  # Anchor the legend at the upper center of the bounding box
         bbox_to_anchor=(0.5, -0.2),  # Move it below the axes
         ncol=1,  # Number of columns in the legend
-        fontsize=12
+        fontsize=10
     )
 
     # Place the PR legend below its plot
@@ -248,7 +309,7 @@ def plot_multiple_method_auroc_auprc(
         loc="upper center",
         bbox_to_anchor=(0.5, -0.2),
         ncol=1,
-        fontsize=12
+        fontsize=10
     )
 
     # Adjust layout and save
@@ -299,8 +360,10 @@ def plot_normal_and_randomized_roc_prc(
             y_scores = normal_y_scores.values
         else:
             y_scores = normal_y_scores
+            
+        y_true_balanced, y_scores_balanced = balance_true_negative_scores(y_true, y_scores)
 
-        fpr, tpr, _ = roc_curve(y_true, y_scores)
+        fpr, tpr, _ = roc_curve(y_true_balanced, y_scores_balanced)
         precision, recall, _ = precision_recall_curve(y_true, y_scores)
         roc_auc = auc(fpr, tpr)
         prc_auc = auc(recall, precision)
@@ -375,6 +438,7 @@ def plot_normal_and_randomized_roc_prc(
         loc="upper center",  # Anchor the legend at the upper center of the bounding box
         bbox_to_anchor=(0.5, -0.2),  # Move it below the axes
         ncol=1,  # Number of columns in the legend
+        fontsize=11
     )
 
     # Place the PR legend below its plot
@@ -382,6 +446,7 @@ def plot_normal_and_randomized_roc_prc(
         loc="upper center",
         bbox_to_anchor=(0.5, -0.2),
         ncol=1,
+        fontsize=11
     )
 
     # Adjust layout and save
@@ -392,17 +457,19 @@ def plot_normal_and_randomized_roc_prc(
 def plot_multiple_histogram_with_thresholds(
     ground_truth_dict: dict,
     inferred_network_dict: dict,
-    save_path: str
+    save_path: str,
+    lower_threshold: float = None
     ) -> None:
     """
-    Generates histograms of the TP, FP, TN, FN score distributions for each method. Uses a lower threshold of 1 stdev below
-    the mean ground truth score. 
+    Generates histograms of the TP, FP, TN, FN score distributions for each method. Uses a default lower threshold of 1 stdev below
+    the mean ground truth score unless otherwise specified by the user. 
 
     Parameters
     ----------
         ground_truth_dict (dict): _description_
         inferred_network_dict (dict): _description_
         result_dir (str): _description_
+        lower_threhsold (float): Optional lower threshold value to pass in, default 1 stdev below mean of ground truth scores
     """
     
     num_methods = len(ground_truth_dict.keys())
@@ -419,8 +486,9 @@ def plot_multiple_histogram_with_thresholds(
     plt.figure(figsize=(18, 8))
 
     # Plot for each method
+    
     for i, method_name in enumerate(ground_truth_dict.keys()):  
-        
+                        
         # Extract data for the current method
         ground_truth_scores = ground_truth_dict[method_name]['Score'].dropna()
         inferred_scores = inferred_network_dict[method_name]['Score'].dropna()
@@ -447,6 +515,17 @@ def plot_multiple_histogram_with_thresholds(
         # Means and standard deviations
         mean1, mean2 = np.mean(ground_truth_scores), np.mean(inferred_scores)
         std1, std2 = np.std(ground_truth_scores), np.std(inferred_scores)
+        
+        # print(f'Ground truth scores: {ground_truth_scores}')
+        # print(f'Sum of ground truth scores: {sum(ground_truth_scores)}')
+        # print(f'Length of ground truth scores: {len(ground_truth_scores)}')
+        # print(f'Ground truth mean scores: {sum(ground_truth_scores) / len(ground_truth_scores)}')
+        
+        # print(f'\nGround truth mean: {mean1}')
+        # print(f'Inferred network mean: {mean2}')
+        
+        # print(f'\nGround truth std: {std1}')
+        # print(f'Inferred network std: {std2}')
 
         # Cohen's d
         cohen_d = abs(mean1 - mean2) / np.sqrt((std1**2 + std2**2) / 2)
@@ -462,7 +541,9 @@ def plot_multiple_histogram_with_thresholds(
             d_result = "Large"
         
         # Define the threshold
-        lower_threshold = np.mean(ground_truth_scores) - np.std(ground_truth_scores)
+        if not lower_threshold:
+            lower_threshold = np.mean(ground_truth_scores) - np.std(ground_truth_scores)
+        
         
         mean = np.mean(np.concatenate([ground_truth_scores, inferred_scores]))
         std_dev = np.std(np.concatenate([ground_truth_scores, inferred_scores]))
@@ -480,6 +561,15 @@ def plot_multiple_histogram_with_thresholds(
         # Define consistent bin edges for the entire dataset based on the number of values
         num_bins = 200
         all_scores = np.concatenate([tp, fn, fp, tn])
+        
+        # print(f'\nMean: {mean}')
+        # print(f'\nstd_dev: {std_dev}')
+        # print(f'Lower threshold: {lower_threshold}')
+        # print(f'Num tp: {len(tp)}')
+        # print(f'Num fn: {len(fn)}')
+        # print(f'Num fp: {len(fp)}')
+        # print(f'Num tn: {len(tn)}')
+        # print(f'len all_scores: {len(all_scores)}')
         
         # Ensure that concatenating all scores creates a non-empty array
         if len(all_scores) == 0:
@@ -504,10 +594,12 @@ def plot_multiple_histogram_with_thresholds(
         # Plot threshold line
         plt.axvline(x=lower_threshold, color='black', linestyle='--', linewidth=2)
         plt.title(f"{method_name.capitalize()} Score Distribution", fontsize=20)
-        plt.xlabel(f"log2 {method_name.capitalize()} Score", fontsize=18)
+        plt.xlabel(f"{method_name.capitalize()} Score", fontsize=18)
         # plt.ylim(1, None)
         # plt.xlim([-20,20])
         plt.ylabel("Frequency")
+    
+    # plt.yscale('log', base=2)
                 
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0., fontsize=18)
 

@@ -114,10 +114,6 @@ def calculate_accuracy_metrics(
     """
     Calculates accuracy metrics for an inferred network.
     
-    Uses a lower threshold as the cutoff between true and false values. The 
-    default lower threshold is set as 1 standard deviation below the mean 
-    ground truth Score.
-    
     True Positive: ground truth Score above the lower threshold
     False Positive: non-ground truth Score above the lower threshold
     True Negative: non-ground truth Score below the lower threshold
@@ -225,7 +221,7 @@ def create_randomized_inference_scores(
     lower_threshold: int = None,
     num_edges_for_early_precision: int = 1000,
     histogram_save_path: str = None,
-    random_method = "random_permutation"
+    random_method = "uniform_distribution"
     ):
     
     """
@@ -295,18 +291,18 @@ def create_randomized_inference_scores(
         [ground_truth_df["Score"], inferred_network_df["Score"]]
     ).values
     
-    if random_method == "random_permutation":
+    # if random_method == "random_permutation":
     
-        # Randomly reassign scores back to the ground truth and inferred network
-        resampled_inferred_network_scores = np.random.choice(total_scores, size=len(inferred_network_score), replace=True)
-        resampled_ground_truth_scores = np.random.choice(total_scores, size=len(ground_truth_score), replace=True)
+    #     # Randomly reassign scores back to the ground truth and inferred network
+    #     resampled_inferred_network_scores = np.random.choice(total_scores, size=len(inferred_network_score), replace=True)
+    #     resampled_ground_truth_scores = np.random.choice(total_scores, size=len(ground_truth_score), replace=True)
     
-    elif random_method == "uniform_distribution":
-        uniform_distribution = np.random.uniform(low = 0.0, high = 1.0, size = len(total_scores)) 
-        
-        # Randomly reassign scores back to the ground truth and inferred network
-        resampled_inferred_network_scores = np.random.choice(uniform_distribution, size=len(inferred_network_score), replace=True)
-        resampled_ground_truth_scores = np.random.choice(uniform_distribution, size=len(ground_truth_score), replace=True)
+    # if random_method == "uniform_distribution":
+    uniform_distribution = np.random.uniform(low = 0.0, high = 1.0, size = len(total_scores)) 
+    
+    # Randomly reassign scores back to the ground truth and inferred network
+    resampled_inferred_network_scores = np.random.choice(uniform_distribution, size=len(inferred_network_score), replace=True)
+    resampled_ground_truth_scores = np.random.choice(uniform_distribution, size=len(ground_truth_score), replace=True)
     
     # Replace the edge Score in the copied dataframe with the resampled Score
     inferred_network_df_copy["Score"] = resampled_inferred_network_scores
@@ -339,15 +335,46 @@ def create_randomized_inference_scores(
     
     if histogram_save_path != None:
         
-        plotting.plot_multiple_histogram_with_thresholds(randomized_ground_truth_dict, randomized_inferred_dict, histogram_save_path)
+        plotting.plot_multiple_histogram_with_thresholds(randomized_ground_truth_dict, randomized_inferred_dict, histogram_save_path, lower_threshold)
     
     return randomized_accuracy_metric_dict, randomized_confusion_matrix_dict
+
+def balance_true_negative_scores(y_true, y_scores):
+    # Balance positive and negative samples for AUROC only
+    y_true = np.array(y_true)
+    y_scores = np.array(y_scores)
+
+    pos_indices = np.where(y_true == 1)[0]
+    neg_indices = np.where(y_true == 0)[0]
+
+    # Subsample negative class to match number of positives
+    if len(pos_indices) > 0 and len(neg_indices) > 0:
+        if len(pos_indices) < len(neg_indices):
+            rng = np.random.default_rng(seed=42)
+            sampled_neg_indices = rng.choice(neg_indices, size=len(pos_indices), replace=False)
+            balanced_indices = np.concatenate([pos_indices, sampled_neg_indices])
+            balanced_indices.sort()
+
+            # For AUROC only
+            y_true_balanced = y_true[balanced_indices]
+            y_scores_balanced = y_scores[balanced_indices]
+        else:
+            y_true_balanced = y_true
+            y_scores_balanced = y_scores
+    else:
+        y_true_balanced = y_true
+        y_scores_balanced = y_scores
+    
+    return y_true_balanced, y_scores_balanced
 
 def calculate_auroc(confusion_matrix_score_dict: dict):
     y_true = confusion_matrix_score_dict['y_true']
     y_scores = confusion_matrix_score_dict['y_scores']
+        
+    y_true_balanced, y_scores_balanced = balance_true_negative_scores(y_true, y_scores)
     
-    fpr, tpr, _ = roc_curve(y_true, y_scores)
+    # Calculate ROC and PR metrics
+    fpr, tpr, _ = roc_curve(y_true_balanced, y_scores_balanced)
     roc_auc = auc(fpr, tpr)
     
     return roc_auc
